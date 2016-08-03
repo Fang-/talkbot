@@ -35,7 +35,7 @@
   ==
 --
 
-|_  {bowl joined/(list address) ignoring/(list @p) tmpstation/station:talk}
+|_  {bowl joined/(map address atlas:talk) ignoring/(list @p) tmpstation/station:talk}
 
 ++  poke-noun
   ::TODO  Should probably check if %peers and %pulls succeed (using reap) before
@@ -44,28 +44,30 @@
   ^-  {(list move) _+>.$}
   ?-  act
     {$join *}
-      ?~  (find [p.a.act q.a.act]~ joined)
-        ~&  [%joining p.a.act q.a.act]
-        :-  [[ost %peer /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] /afx/[q.a.act]/(scot %da now)] ~]
-        +>.$(joined [[p.a.act q.a.act] joined])
-      ~&  [%already-joined p.a.act q.a.act]
-      [~ +>.$]
+      ?:  (~(has by joined) [p.a.act q.a.act])
+        ~&  [%already-joined p.a.act q.a.act]
+        [~ +>.$]
+      ~&  [%joining p.a.act q.a.act]
+      :-  [[ost %peer /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] /afx/[q.a.act]/(scot %da now)] ~]
+      +>.$(joined (~(put by joined) [p.a.act q.a.act] *atlas:talk))
     {$leave *}
-      =+  i=(find [p.a.act q.a.act]~ joined)
-      ?~  i
+      ?.  (~(has by joined) [p.a.act q.a.act])
         ~&  [%already-left p.a.act q.a.act]
         [~ +>.$]
       ~&  [%leaving p.a.act q.a.act]
       :-  [[ost %pull /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] ~] ~]
-      +>.$(joined (weld (scag u.i joined) (slag +(u.i) joined)))
+      +>.$(joined (~(del by joined) [p.a.act q.a.act]))
     {$leaveall $~}
       ~&  [%leaving-all]
       :_  +>.$(joined ~)
-      %+  turn  joined
-        |=  a/address
-        [ost %pull /talkbot/listen/(scot %p p.a)/[q.a] [p.a %talk] ~]
+      %+  turn  (~(tap by joined))
+        |=  a/(pair address atlas:talk)
+        [ost %pull /talkbot/listen/(scot %p p.p.a)/[q.p.a] [p.p.a %talk] ~]
     {$joined $~}
-      ~&  [%currently-joined joined]
+      ~&  :-  %currently-joined
+        %+  turn  (~(tap by joined))
+          |=  a/(pair address atlas:talk)
+          p.a
       [~ +>.$]
     {$ignoring $~}
       ~&  [%ignoring ignoring]
@@ -112,10 +114,36 @@
     [moves +>.^$]
 
   ?:  ?=({$group *} rep)  ::  Users in channel.
-    ::TODO  Store channel member count.
-    ~&  [%got-group p.rep]
-    [~ +>.$]
-  
+    ::  Since $group reports don't contain the station it came from, we have to
+    ::  deduce it from the wire.
+    ?.  ?=({$talkbot $listen * *} wir)
+      [~ +>.$]
+    ::  If we can't parse the ship from the wire, jump out.
+    =+  ship=(fall `(unit @p)`(slaw %p i.t.t.wir) ~)
+    ?~  ship
+      ~&  [%unparsable-wire-address wir]
+      [~ +>.$]
+    =+  channel=(crip (slag 1 (spud t.t.t.wir)))
+    ::  Verify we know the station we deduced from the wire.
+    ?.  (~(has by joined) [ship channel])
+      ~&  [%unknown-wire-address [ship channel]]
+      [~ +>.$]
+    :_  +>.$(joined (~(put by joined) [ship channel] p.rep))
+    =+  oldmems=(fall (~(get by joined) [ship channel]) ~)
+    ::  To avoid greet-bombing, only continue when a single new ship joined.
+    ?.  =((dec ~(wyt by p.rep)) ~(wyt by oldmems))
+      ~
+    =+  diff=(~(dif in p.rep) oldmems)
+    ?.  =(~(wyt by diff) 1)
+      ~&  [%weird-mem-diff-num ~(wyt by diff)]
+      ~
+    ::  This feels kind of naive, but it works.
+    =+  newmem=(head (~(tap by diff)))
+    ?:  =(p.i.newmem our)
+      ~
+    ::  Finally, greet the newly joined ship.
+    [(send [ship channel] :(weld "Welcome, " (ship-firstname p.i.newmem) "!")) ~]
+
   ?:  ?=({$cabal *} rep)  ::  Channel info.
     ~&  [%got-cabal rep]
     [~ +>.$]
@@ -156,6 +184,11 @@
     ::  If our ship name is mentioned, inform that we are a bot.
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
       [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
+    ?:  =((find "~whocount" tmsg) [~ 0])
+      =+  memlist=(fall (~(get by joined) aud) ~)
+      ?:  (gth ~(wyt by memlist) 0)
+        [[~ (send aud :(weld "There are currently " (scow %u ~(wyt by memlist)) " ships here."))] ~]
+      [[~ (send aud :(weld "I don't have member data for this station yet, sorry!"))] ~]
     ?:  =((find "~ignoreme" tmsg) [~ 0])
       [~ [~ [%ignore p.gram]]]
     ?:  =((find "~chopra" tmsg) [~ 0])
