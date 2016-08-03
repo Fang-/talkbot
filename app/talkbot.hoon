@@ -110,7 +110,7 @@
         $
       $(tmpstation s.u.q.updres, ignoring i.u.q.updres)
     [moves +>.^$]
-    
+
   ?:  ?=({$group *} rep)  ::  Users in channel.
     ::TODO  Store channel member count.
     ~&  [%got-group p.rep]
@@ -119,7 +119,7 @@
   ?:  ?=({$cabal *} rep)  ::  Channel info.
     ~&  [%got-cabal rep]
     [~ +>.$]
-  
+
   ~&  [%report rep]
   [~ +>.$]
 
@@ -140,13 +140,14 @@
     ?^  (find "talkbot" tmsg)
       ::  If someone greets us, greet them back by name.
       =+  ^=  greeted
+        ::TODO  Matches on things like "the talkbot they built"
         ?^  (find "hi " tmsg)  &  :: We don't want it to match on "something".
         ?^  (find "hey" tmsg)  &
         ?^  (find "hello" tmsg)  &
         ?^  (find "greetings" tmsg)  &
         |
       ?:  greeted
-        [[~ (send aud (weld "Hello " (weld (ship-firstname p.gram) "!")))] ~]
+        [[~ (send aud :(weld "Hello " (ship-firstname p.gram) "!"))] ~]
       ::  If we're thanked, respond.
       ?^  (find "thank" tmsg)
         [[~ (send aud "You're welcome!")] ~]
@@ -156,12 +157,11 @@
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
       [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
     ?:  =((find "~ignoreme" tmsg) [~ 0])
-      ~&  [%will-ignore p.gram]
       [~ [~ [%ignore p.gram]]]
     ?:  =((find "~chopra" tmsg) [~ 0])
       [[~ [ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))]] [~ [%tmpstation aud]]]
     [~ ~]
-  
+
   ?:  ?=({$url *} msg)  ::  Parsed URL.
     =+  turl=(earf p.msg)
     =+  slashes=(fand "/" turl)
@@ -174,13 +174,20 @@
         ?^  (find "/issues/" turl)
           (crip (weld apibase (swag [19 (lent turl)] turl)))
         ?^  (find "/pull/" turl)
-          (crip (weld apibase (weld (swag [19 (sub (snag 4 slashes) 19)] turl) (weld "/issues" (swag [(snag 5 slashes) 6] turl)))))
+          (crip :(weld apibase (swag [19 (sub (snag 4 slashes) 19)] turl) "/issues" (swag [(snag 5 slashes) 6] turl)))
         (crip (weld apibase (swag [19 (sub (lent turl) 19)] turl)))  ::  Just make a generic api call.
-      ~&  [%api api]
-      [[~ [ost %hiss /gh/(crip owner)/(crip repo) ~ %httr %purl (need (epur api))]] [~ [%tmpstation aud]]]
+      =+  url=(epur api)
+      ?~  url
+        ~&  [%failed-epur-for api]
+        [~ ~]
+      [[~ [ost %hiss /gh/(crip owner)/(crip repo) ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
     ?:  =((find "http://pastebin.com/" turl) [~ 0])
       :: Pastebin doesn't provide API access to paste data (ie title), so just get the page.
-      [[~ [ost %hiss /pb ~ %httr %purl (need (epur (crip turl)))]] [~ [%tmpstation aud]]]
+      =+  url=(epur (crip turl))
+      ?~  url
+        ~&  [%failed-epur-for turl]
+        [~ ~]
+      [[~ [ost %hiss /pb ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
     [~ ~]
   [~ ~]
 
@@ -210,7 +217,7 @@
             ?:  ?=({$s *} fullname)  (trip p.fullname)
             ?:  ?=({$s *} repourl)  (swag [29 20] (trip p.repourl))
             "GitHub"
-          [[(send tmpstation (weld (weld repo ": ") info)) ~] +>.$]
+          [[(send tmpstation :(weld repo ": " info)) ~] +>.$]
         ~&  [%no-title]
         [~ +>.$]
       ?:  =(i.wir %pb)
@@ -272,16 +279,16 @@
     [~ +>.$]
   ~&  [%subscription-failed error]
   [~ +>.$]
-  
+
 ++  ship-firstname
   |=  ship/@p
   ^-  tape
   =+  name=(scow %p ship)
   =+  part=?:(=((clan ship) %earl) [15 6] [1 6])
   (weld "~" (swag part name))
-  
+
 ++  ship-shortname
-  |=  ship/@p 
+  |=  ship/@p
   ^-  tape
   =+  kind=(clan ship)
   =+  name=(scow %p ship)
