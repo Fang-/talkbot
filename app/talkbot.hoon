@@ -43,77 +43,80 @@
   |=  act/action
   ^-  {(list move) _+>.$}
   ?-  act
-    {$join *}
-      ?:  (~(has by joined) [p.a.act q.a.act])
-        ~&  [%already-joined p.a.act q.a.act]
-        [~ +>.$]
-      ~&  [%joining p.a.act q.a.act]
-      :-  [[ost %peer /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] /afx/[q.a.act]/(scot %da now)] ~]
-      +>.$(joined (~(put by joined) [p.a.act q.a.act] *atlas:talk))
-    {$leave *}
-      ?.  (~(has by joined) [p.a.act q.a.act])
-        ~&  [%already-left p.a.act q.a.act]
-        [~ +>.$]
-      ~&  [%leaving p.a.act q.a.act]
-      :-  [[ost %pull /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] ~] ~]
-      +>.$(joined (~(del by joined) [p.a.act q.a.act]))
-    {$leaveall $~}
-      ~&  [%leaving-all]
-      :_  +>.$(joined ~)
+  {$join *}
+    ?:  (~(has by joined) [p.a.act q.a.act])
+      ~&  [%already-joined p.a.act q.a.act]
+      [~ +>.$]
+    ~&  [%joining p.a.act q.a.act]
+    :-  [[ost %peer /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] /afx/[q.a.act]/(scot %da now)] ~]
+    +>.$(joined (~(put by joined) [p.a.act q.a.act] *atlas:talk))
+  {$leave *}
+    ?.  (~(has by joined) [p.a.act q.a.act])
+      ~&  [%already-left p.a.act q.a.act]
+      [~ +>.$]
+    ~&  [%leaving p.a.act q.a.act]
+    :-  [[ost %pull /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] ~] ~]
+    +>.$(joined (~(del by joined) [p.a.act q.a.act]))
+  {$leaveall $~}
+    ~&  [%leaving-all]
+    :_  +>.$(joined ~)
+    %+  turn  (~(tap by joined))
+      |=  a/(pair address atlas:talk)
+      [ost %pull /talkbot/listen/(scot %p p.p.a)/[q.p.a] [p.p.a %talk] ~]
+  {$joined $~}
+    ~&  :-  %currently-joined
       %+  turn  (~(tap by joined))
         |=  a/(pair address atlas:talk)
-        [ost %pull /talkbot/listen/(scot %p p.p.a)/[q.p.a] [p.p.a %talk] ~]
-    {$joined $~}
-      ~&  :-  %currently-joined
-        %+  turn  (~(tap by joined))
-          |=  a/(pair address atlas:talk)
-          p.a
-      [~ +>.$]
-    {$ignoring $~}
-      ~&  [%ignoring ignoring]
-      [~ +>.$]
+        p.a
+    [~ +>.$]
+  {$ignoring $~}
+    ~&  [%ignoring ignoring]
+    [~ +>.$]
   ==
 
 ++  diff-talk-report
   |=  {wir/wire rep/report:talk}
   ^-  {(list move) _+>.$}
-  ?:  ?=({$grams *} rep)  ::  Message list.
+  ?+  rep
+    ~&  [%report rep]
+    [~ +>.$]
+  {$grams *}  ::  Message list.
     =+  i=(lent q.rep)
     =|  moves/(list move)
     |-  ^-  {(list move) _+>.^$}
-    ?:  (gth i 0)
-      =.  i  (sub i 1)
-      =+  gram=(snag i q.rep)
-      =+  res=(read-telegram gram)  ::  (pair (unit move) (unit update))
-      =.  moves  ?~(p.res moves [u.p.res moves])
-      =+  upd=(fall q.res ~)
-      =+  ^=  updres  ^-  (pair (unit move) (unit {s/station:talk i/(list @p)}))
-        ?-  upd
-          {$tmpstation *}
-            [~ [~ [s=s.upd i=ignoring]]]
-          {$ignore *}
-            ?^  (find [p.upd]~ ignoring)  [~ ~]
-            :_  [~ [s=tmpstation i=[p.upd ignoring]]]
-            [~ (send (get-audience-station-naive q.q.gram) :(weld "Now ignoring " (ship-shortname p.upd) ", use ~unignoreme to undo."))]
-          {$unignore *}
-            =+  i=(find [p.upd]~ ignoring)
-            ?~  i  [~ ~]
-            =+  nign=(weld (scag u.i ignoring) (slag +(u.i) ignoring))
-            :_  [~ [s=tmpstation i=nign]]
-            [~ (send (get-audience-station-naive q.q.gram) (weld "No longer ignoring " (ship-shortname p.upd)))]
-          {$~}  [~ ~]
-        ==
-      =.  moves  ?~(p.updres moves [u.p.updres moves])  ::  If we got a move, add it.
-      ?:  =(i 0)
-        ?~  q.updres
-          [moves +>.^$]
-        [moves +>.^$(tmpstation s.u.q.updres, ignoring i.u.q.updres)]
+    ?.  (gth i 0)
+      [moves +>.^$]
+    =.  i  (sub i 1)
+    =+  gram=(snag i q.rep)
+    =+  res=(read-telegram gram)  ::  (pair (unit move) (unit update))
+    =.  moves  ?~(p.res moves [u.p.res moves])
+    =+  upd=(fall q.res ~)
+    =+  ^=  updres  ^-  (pair (unit move) (unit {s/station:talk i/(list @p)}))
+      ?-  upd
+      {$tmpstation *}
+        [~ [~ [s=s.upd i=ignoring]]]
+      {$ignore *}
+        ?^  (find [p.upd]~ ignoring)  [~ ~]
+        :_  [~ [s=tmpstation i=[p.upd ignoring]]]
+        [~ (send (get-audience-station-naive q.q.gram) :(weld "Now ignoring " (ship-shortname p.upd) ", use ~unignoreme to undo."))]
+      {$unignore *}
+        =+  i=(find [p.upd]~ ignoring)
+        ?~  i  [~ ~]
+        =+  nign=(weld (scag u.i ignoring) (slag +(u.i) ignoring))
+        :_  [~ [s=tmpstation i=nign]]
+        [~ (send (get-audience-station-naive q.q.gram) (weld "No longer ignoring " (ship-shortname p.upd)))]
+      {$~}  [~ ~]
+      ==
+    =.  moves  ?~(p.updres moves [u.p.updres moves])  ::  If we got a move, add it.
+    ?:  =(i 0)
       ?~  q.updres
-        $
-      $(tmpstation s.u.q.updres, ignoring i.u.q.updres)
-    [moves +>.^$]
+        [moves +>.^$]
+      [moves +>.^$(tmpstation s.u.q.updres, ignoring i.u.q.updres)]
+    ?~  q.updres
+      $
+    $(tmpstation s.u.q.updres, ignoring i.u.q.updres)
 
-  ?:  ?=({$group *} rep)  ::  Users in channel.
+  {$group *}  ::  Users in channel.
     ::  Since $group reports don't contain the station it came from, we have to
     ::  deduce it from the wire.
     ?.  ?=({$talkbot $listen * *} wir)
@@ -144,12 +147,11 @@
     ::  Finally, greet the newly joined ship.
     [(send [ship channel] :(weld "Welcome, " (ship-firstname p.i.newmem) "!")) ~]
 
-  ?:  ?=({$cabal *} rep)  ::  Channel info.
+  {$cabal *}  ::  Channel info.
     ~&  [%got-cabal rep]
     [~ +>.$]
 
-  ~&  [%report rep]
-  [~ +>.$]
+  ==
 
 ++  read-telegram
   |=  gram/telegram:talk
@@ -162,7 +164,9 @@
     ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
       [~ [~ [%unignore p.gram]]]
     [~ ~]
-  ?:  ?=({$lin *} msg)  ::  Regular message.
+  ?+  msg
+    [~ ~]
+  {$lin *}  ::  Regular message.
     =+  tmsg=(trip q.msg)
     ::  React when we are talked about.
     ?^  (find "talkbot" tmsg)
@@ -197,7 +201,7 @@
       [[~ [ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))]] [~ [%tmpstation aud]]]
     [~ ~]
 
-  ?:  ?=({$url *} msg)  ::  Parsed URL.
+  {$url *}  ::  Parsed URL.
     =+  turl=(earf p.msg)
     =+  slashes=(fand "/" turl)
     ?:  =((find "https://github.com/" turl) [~ 0])
@@ -224,58 +228,58 @@
         [~ ~]
       [[~ [ost %hiss /pb ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
     [~ ~]
-  [~ ~]
+  ==
 
 ++  sigh-httr
   |=  {wir/wire code/@ud headers/mess body/(unit octs)}
   ^-  {(list move) _+>.$}
-  ?:  &((gte code 200) (lth code 300))
-    ?~  body
-      [~ +>.$]
-    ?:  ?=({@tas *} wir)
-      ?:  =(i.wir %gh)  ::  GitHub
-        =+  json=(poja q.u.body)
-        ?~  json
-          [~ +>.$]
-        ?:  ?=({$o *} u.json)
-          =+  ^=  info  ^-  tape
-            =+  desc=(fall (~(get by p.u.json) 'description') ~)
-            =+  title=(fall (~(get by p.u.json) 'title') ~)
-            ?:  ?=({$s *} desc)  (trip p.desc)
-            ?:  ?=({$s *} title)  (trip p.title)
-            ~
-          ?~  info  ::  If we can't say anything informative, just don't speak.
-            [~ +>.$]
-          =+  ^=  repo  ^-  tape
-            =+  fullname=(fall (~(get by p.u.json) 'full_name') ~)
-            =+  repourl=(fall (~(get by p.u.json) 'repository_url') ~)
-            ?:  ?=({$s *} fullname)  (trip p.fullname)
-            ?:  ?=({$s *} repourl)  (swag [29 20] (trip p.repourl))
-            "GitHub"
-          [[(send tmpstation :(weld repo ": " info)) ~] +>.$]
-        ~&  [%no-title]
-        [~ +>.$]
-      ?:  =(i.wir %pb)
-        =+  tbody=(trip q.u.body)
-        =+  openi=(fall (find "<h1>" tbody) ~)
-        =+  closei=(fall (find "</h1>" tbody) ~)
-        ?:  !|(=(openi ~) =(closei ~))
-          =.  openi  (add openi 4)
-          =+  title=(swag [openi (sub closei openi)] tbody)
-          ?:  =(title "Untitled")
-            [~ +>.$]
-          [[(send tmpstation title) ~] +>.$]
-        [~ +>.$]
-      ?:  =(i.wir %chopra)
-        =+  tbody=(trip q.u.body)
-        [[(send tmpstation tbody) ~] +>.$]
-      ~&  [%unknown-service]
-      [~ +>.$]
+  ?.  &((gte code 200) (lth code 300))
+    ~&  [%we-have-a-problem code]
+    ~&  [%headers headers]
+    ~&  [%body body]
+    [~ +>.$]
+  ?~  body
+    [~ +>.$]
+  ?.  ?=({@tas *} wir)
     ~&  [%invalid-wire]
     [~ +>.$]
-  ~&  [%we-have-a-problem code]
-  ~&  [%headers headers]
-  ~&  [%body body]
+  ?:  =(i.wir %gh)  ::  GitHub
+    =+  json=(poja q.u.body)
+    ?~  json
+      [~ +>.$]
+    ?.  ?=({$o *} u.json)
+      ~&  [%no-title]
+      [~ +>.$]
+    =+  ^=  info  ^-  tape
+      =+  desc=(fall (~(get by p.u.json) 'description') ~)
+      =+  title=(fall (~(get by p.u.json) 'title') ~)
+      ?:  ?=({$s *} desc)  (trip p.desc)
+      ?:  ?=({$s *} title)  (trip p.title)
+      ~
+    ?~  info  ::  If we can't say anything informative, just don't speak.
+      [~ +>.$]
+    =+  ^=  repo  ^-  tape
+      =+  fullname=(fall (~(get by p.u.json) 'full_name') ~)
+      =+  repourl=(fall (~(get by p.u.json) 'repository_url') ~)
+      ?:  ?=({$s *} fullname)  (trip p.fullname)
+      ?:  ?=({$s *} repourl)  (swag [29 20] (trip p.repourl))
+      "GitHub"
+    [[(send tmpstation :(weld repo ": " info)) ~] +>.$]
+  ?:  =(i.wir %pb)
+    =+  tbody=(trip q.u.body)
+    =+  openi=(fall (find "<h1>" tbody) ~)
+    =+  closei=(fall (find "</h1>" tbody) ~)
+    ?.  !|(=(openi ~) =(closei ~))
+      [~ +>.$]
+    =.  openi  (add openi 4)
+    =+  title=(swag [openi (sub closei openi)] tbody)
+    ?:  =(title "Untitled")
+      [~ +>.$]
+    [[(send tmpstation title) ~] +>.$]
+  ?:  =(i.wir %chopra)
+    =+  tbody=(trip q.u.body)
+    [[(send tmpstation tbody) ~] +>.$]
+  ~&  [%unknown-service]
   [~ +>.$]
 
 ++  get-audience-station-naive
