@@ -180,6 +180,8 @@
       ?^  (find "thank" tmsg)
         [[~ (send aud "You're welcome!")] ~]
       ::  If we're told to shut up, tell them about ~ignoreme.
+      ?^  (find "shut up" tmsg)
+        [[~ (send aud "Want me to ignore you? Send `~ignoreme`.")] ~]
       [~ ~]
     ::  If our ship name is mentioned, inform that we are a bot.
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
