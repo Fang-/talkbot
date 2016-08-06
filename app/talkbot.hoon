@@ -20,10 +20,9 @@
       {$poke wire {@p term} *}
       {$hiss wire $~ $httr {$purl p/purl}}
   ==
-++  address  {(pair @p @ta)}
 ++  action
-  $%  {$join a/address}
-      {$leave a/address}
+  $%  {$join a/station:talk}
+      {$leave a/station:talk}
       {$leaveall $~}
       {$joined $~}
       {$ignoring $~}
@@ -35,7 +34,7 @@
   ==
 --
 
-|_  {bowl joined/(map address atlas:talk) ignoring/(list @p) tmpstation/station:talk}
+|_  {bowl joined/(map station:talk atlas:talk) ignoring/(list @p) tmpstation/station:talk}
 
 ++  poke-noun
   ::TODO  Should probably check if %peers and %pulls succeed (using reap) before
@@ -44,29 +43,29 @@
   ^-  {(list move) _+>.$}
   ?-  act
   {$join *}
-    ?:  (~(has by joined) [p.a.act q.a.act])
-      ~&  [%already-joined p.a.act q.a.act]
+    ?:  (~(has by joined) a.act)
+      ~&  [%already-joined a.act]
       [~ +>.$]
-    ~&  [%joining p.a.act q.a.act]
+    ~&  [%joining a.act]
     :-  [[ost %peer /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] /afx/[q.a.act]/(scot %da now)] ~]
-    +>.$(joined (~(put by joined) [p.a.act q.a.act] *atlas:talk))
+    +>.$(joined (~(put by joined) a.act *atlas:talk))
   {$leave *}
-    ?.  (~(has by joined) [p.a.act q.a.act])
-      ~&  [%already-left p.a.act q.a.act]
+    ?.  (~(has by joined) a.act)
+      ~&  [%already-left a.act]
       [~ +>.$]
-    ~&  [%leaving p.a.act q.a.act]
+    ~&  [%leaving a.act]
     :-  [[ost %pull /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] ~] ~]
-    +>.$(joined (~(del by joined) [p.a.act q.a.act]))
+    +>.$(joined (~(del by joined) a.act))
   {$leaveall $~}
     ~&  [%leaving-all]
     :_  +>.$(joined ~)
     %+  turn  (~(tap by joined))
-      |=  a/(pair address atlas:talk)
+      |=  a/(pair station:talk *)
       [ost %pull /talkbot/listen/(scot %p p.p.a)/[q.p.a] [p.p.a %talk] ~]
   {$joined $~}
     ~&  :-  %currently-joined
       %+  turn  (~(tap by joined))
-        |=  a/(pair address atlas:talk)
+        |=  a/(pair station:talk *)
         p.a
     [~ +>.$]
   {$ignoring $~}
