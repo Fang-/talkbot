@@ -21,8 +21,8 @@
       {$hiss wire $~ $httr {$purl p/purl}}
   ==
 ++  action
-  $%  {$join a/station:talk}
-      {$leave a/station:talk}
+  $%  {$join s/station:talk}
+      {$leave s/station:talk}
       {$leaveall $~}
       {$joined $~}
       {$ignoring $~}
@@ -43,19 +43,19 @@
   ^-  {(list move) _+>.$}
   ?-  act
   {$join *}
-    ?:  (~(has by joined) a.act)
-      ~&  [%already-joined a.act]
+    ?:  (~(has by joined) s.act)
+      ~&  [%already-joined s.act]
       [~ +>.$]
-    ~&  [%joining a.act]
-    :-  [[ost %peer /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] /afx/[q.a.act]/(scot %da now)] ~]
-    +>.$(joined (~(put by joined) a.act *atlas:talk))
+    ~&  [%joining s.act]
+    :-  [[ost %peer /talkbot/listen/(scot %p p.s.act)/[q.s.act] [p.s.act %talk] /afx/[q.s.act]/(scot %da now)] ~]
+    +>.$(joined (~(put by joined) s.act *atlas:talk))
   {$leave *}
-    ?.  (~(has by joined) a.act)
-      ~&  [%already-left a.act]
+    ?.  (~(has by joined) s.act)
+      ~&  [%already-left s.act]
       [~ +>.$]
-    ~&  [%leaving a.act]
-    :-  [[ost %pull /talkbot/listen/(scot %p p.a.act)/[q.a.act] [p.a.act %talk] ~] ~]
-    +>.$(joined (~(del by joined) a.act))
+    ~&  [%leaving s.act]
+    :-  [[ost %pull /talkbot/listen/(scot %p p.s.act)/[q.s.act] [p.s.act %talk] ~] ~]
+    +>.$(joined (~(del by joined) s.act))
   {$leaveall $~}
     ~&  [%leaving-all]
     :_  +>.$(joined ~)
