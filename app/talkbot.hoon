@@ -49,7 +49,7 @@
       [~ +>.$]
     ~&  [%joining s.act]
     :-  [[ost %peer /(scot %p p.s.act)/[q.s.act] [p.s.act %talk] /afx/[q.s.act]/(scot %da now)] ~]
-    +>.$(joined (~(put by joined) s.act *atlas:talk))
+    +>.$
   {$leave *}
     ?.  (~(has by joined) s.act)
       ~&  [%already-left s.act]
@@ -321,10 +321,15 @@
 ++  reap
   |=  {wir/wire error/(unit tang)}
   ^-  {(list move) _+>.$}
-  ?~  error
+  ?^  error
+    ~&  [%subscription-failed error]
     [~ +>.$]
-  ~&  [%subscription-failed error]
-  [~ +>.$]
+  =+  stat=(fall (station-from-wire wir) ~)
+  ?~  stat
+    ~&  [%unexpected-reap wir]
+    [~ +>.$]
+  ~&  [%joined stat]
+  [~ +>.$(joined (~(put by joined) stat *atlas:talk))]
 
 ++  station-from-wire
   |=  wir/wire
