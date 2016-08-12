@@ -48,14 +48,14 @@
       ~&  [%already-joined s.act]
       [~ +>.$]
     ~&  [%joining s.act]
-    :-  [[ost %peer /talkbot/listen/(scot %p p.s.act)/[q.s.act] [p.s.act %talk] /afx/[q.s.act]/(scot %da now)] ~]
+    :-  [[ost %peer /(scot %p p.s.act)/[q.s.act] [p.s.act %talk] /afx/[q.s.act]/(scot %da now)] ~]
     +>.$(joined (~(put by joined) s.act *atlas:talk))
   {$leave *}
     ?.  (~(has by joined) s.act)
       ~&  [%already-left s.act]
       [~ +>.$]
     ~&  [%leaving s.act]
-    :-  [[ost %pull /talkbot/listen/(scot %p p.s.act)/[q.s.act] [p.s.act %talk] ~] ~]
+    :-  [[ost %pull /(scot %p p.s.act)/[q.s.act] [p.s.act %talk] ~] ~]
     +>.$(joined (~(del by joined) s.act))
   {$joinfaves $~}
     =+  ^=  favs  ^-  (list station:talk)  :~
@@ -72,8 +72,8 @@
     ~&  [%leaving-all]
     :_  +>.$(joined ~)
     %+  turn  (~(tap by joined))
-      |=  a/(pair station:talk *)
-      [ost %pull /talkbot/listen/(scot %p p.p.a)/[q.p.a] [p.p.a %talk] ~]
+      |=  j/(pair station:talk *)
+      [ost %pull /(scot %p p.p.j)/[q.p.j] [p.p.j %talk] ~]
   {$joined $~}
     ~&  :-  %currently-joined
       %+  turn  (~(tap by joined))
@@ -130,20 +130,16 @@
   {$group *}  ::  Users in channel.
     ::  Since $group reports don't contain the station it came from, we have to
     ::  deduce it from the wire.
-    ?.  ?=({$talkbot $listen * *} wir)
-      [~ +>.$]
+    =+  stat=(fall (station-from-wire wir) ~)
     ::  If we can't parse the ship from the wire, jump out.
-    =+  ship=(fall `(unit @p)`(slaw %p i.t.t.wir) ~)
-    ?~  ship
-      ~&  [%unparsable-wire-address wir]
+    ?~  stat
       [~ +>.$]
-    =+  channel=(crip (slag 1 (spud t.t.t.wir)))
     ::  Verify we know the station we deduced from the wire.
-    ?.  (~(has by joined) [ship channel])
-      ~&  [%unknown-wire-address [ship channel]]
+    ?.  (~(has by joined) stat)
+      ~&  [%unknown-wire-address stat]
       [~ +>.$]
-    :_  +>.$(joined (~(put by joined) [ship channel] p.rep))
-    =+  oldmems=(fall (~(get by joined) [ship channel]) ~)
+    =+  oldmems=(fall (~(get by joined) stat) ~)
+    :_  +>.$(joined (~(put by joined) stat p.rep))
     ::  To avoid greet-bombing, only continue when a single new ship joined.
     ?.  =((dec ~(wyt by p.rep)) ~(wyt by oldmems))
       ~
@@ -156,7 +152,7 @@
     ?:  =(p.i.newmem our)
       ~
     ::  Finally, greet the newly joined ship.
-    [(send [ship channel] :(weld "Welcome, " (ship-firstname p.i.newmem) "!")) ~]
+    [(send stat :(weld "Welcome, " (ship-firstname p.i.newmem) "!")) ~]
 
   {$cabal *}  ::  Channel info.
     ~&  [%got-cabal rep]
@@ -329,6 +325,18 @@
     [~ +>.$]
   ~&  [%subscription-failed error]
   [~ +>.$]
+
+++  station-from-wire
+  |=  wir/wire
+  ^-  (unit station:talk)
+  ?.  ?=({@tas @tas *} wir)
+    ~
+  =+  ship=(fall `(unit @p)`(slaw %p i.wir) ~)
+  ?~  ship
+    ~&  [%unparsable-wire-station wir]
+    ~
+  =+  channel=(crip (slag 1 (spud t.wir)))
+  [~ [ship channel]]
 
 ++  ship-firstname
   |=  ship/@p
