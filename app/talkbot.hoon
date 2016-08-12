@@ -23,6 +23,7 @@
 ++  action
   $%  {$join s/station:talk}
       {$leave s/station:talk}
+      {$joinfaves $~}
       {$leaveall $~}
       {$joined $~}
       {$ignoring $~}
@@ -56,6 +57,17 @@
     ~&  [%leaving s.act]
     :-  [[ost %pull /talkbot/listen/(scot %p p.s.act)/[q.s.act] [p.s.act %talk] ~] ~]
     +>.$(joined (~(del by joined) s.act))
+  {$joinfaves $~}
+    =+  ^=  favs  ^-  (list station:talk)  :~
+      [~torbyt-sogwyx ~.sandbox]
+      [~dozbud ~.urbit-meta]
+    ==
+    :_  +>.$
+    %+  murn  favs
+      |=  f/station:talk
+      ^-  (unit move)
+      ::  Just poke our app for the %join call.
+      [~ [ost %poke /poking [our dap] %noun [%join f]]]
   {$leaveall $~}
     ~&  [%leaving-all]
     :_  +>.$(joined ~)
