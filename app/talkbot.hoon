@@ -293,7 +293,15 @@
   |=  aud/audience:talk
   ^-  station:talk
   ?.  ?=({^ $~ $~} aud)                 ::  test if aud is a singleton map
-    ~|  %not-singleton-map  !!          ::  fail when it's not
+    ::TODO  This is a shitty tmp fix. Do better "complex audience" handling here.
+    ?.  %-  ~(any in aud)
+            |=  a/(pair partner:talk *)
+            ?.  ?=({$& station:talk} p.a)  |
+            ?.  =(q.p.p.a ~.urbit-meta)  |
+            ?.  |(=(p.p.p.a ~binzod) =(p.p.p.a ~marzod) =(p.p.p.a ~samzod) =(p.p.p.a ~wanzod))  |
+            &
+      ~|  %complex-audience  !!          ::  fail when it's not
+    [~binzod ~.urbit-meta]  ::  Just naively post to ~binzod, it doesn't really matter.
   ?-  p.n.aud                           ::  we know that p.n.aud exists thanks to the ?=
     {$& station:talk}  p.p.n.aud        ::  produce the value
     {$| *}        ~|  %not-station  !!  ::  fail
