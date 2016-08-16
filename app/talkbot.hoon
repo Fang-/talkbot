@@ -59,8 +59,8 @@
     +>.$(joined (~(del by joined) s.act))
   {$joinfaves $~}
     =+  ^=  favs  ^-  (list station:talk)  :~
-      [~torbyt-sogwyx ~.sandbox]
-      [~dozbud ~.urbit-meta]
+      [~palfun-foslup ~.sandbox]
+      [~binzod ~.urbit-meta]
     ==
     :_  +>.$
     %+  murn  favs
@@ -149,10 +149,10 @@
       ~
     ::  This feels kind of naive, but it works.
     =+  newmem=(head (~(tap by diff)))
-    ?:  =(p.i.newmem our)
+    ?:  =(p.newmem our)
       ~
     ::  Finally, greet the newly joined ship.
-    [(send stat :(weld "Welcome, " (ship-firstname p.i.newmem) "!")) ~]
+    [(send stat :(weld "Welcome, " (ship-firstname p.newmem) "!")) ~]
 
   {$cabal *}  ::  Channel info.
     ~&  [%got-cabal rep]
@@ -286,7 +286,7 @@
   ?:  =(i.wir %chopra)
     =+  tbody=(trip q.u.body)
     [[(send tmpstation tbody) ~] +>.$]
-  ~&  [%unknown-service]
+  ~&  [%unknown-service wir]
   [~ +>.$]
 
 ++  get-audience-station-naive
@@ -306,7 +306,7 @@
   [ost %poke /repeat/(scot %ud 1)/(scot %p p.cuz)/[q.cuz] [our %talk] (said our cuz %talk now eny [%leaf (weld ":: " mes)]~)]
 
 ++  said  ::  Modified from lib/talk.hoon.
-  |=  {our/@p cuz/station:talk dap/term now/@da eny/@uvI mes/(list tank)}
+  |=  {our/@p cuz/station:talk dap/term now/@da eny/@uvJ mes/(list tank)}
   :-  %talk-command
   ^-  command:talk
   :-  %publish
