@@ -197,6 +197,8 @@
     ::  If our ship name is mentioned, inform that we are a bot.
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
       [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
+    ?:  =("ping" tmsg)
+      [[~ (send aud "Pong.")] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
       ?:  (gth ~(wyt by memlist) 0)
