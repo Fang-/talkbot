@@ -228,7 +228,7 @@
       ?~  url
         ~&  [%failed-epur-for api]
         [~ ~]
-      [[~ [ost %hiss /gh/(crip owner)/(crip repo) ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
+      [[~ [ost %hiss /gh ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
     ?:  =((find "http://pastebin.com/" turl) [~ 0])
       :: Pastebin doesn't provide API access to paste data (ie title), so just get the page.
       =+  url=(epur (crip turl))
