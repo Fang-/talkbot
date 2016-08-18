@@ -9,7 +9,7 @@
 ::TODO  Use ;: and %+ etc for cleaner-looking code.
 
 /-  talk
-/+  talk
+/+  talk, gh-parse
 !:
 
 |%
@@ -214,21 +214,29 @@
     =+  turl=(earf p.msg)
     =+  slashes=(fand "/" turl)
     ?:  =((find "https://github.com/" turl) [~ 0])
-      =+  owner=(swag [19 (sub (snag 3 slashes) 19)] turl)
-      =+  repo=(swag [(add (snag 3 slashes) 1) (sub ?:((gth (lent slashes) 4) (snag 4 slashes) (lent turl)) (add (snag 3 slashes) 1))] turl)
-      =|  api/cord
       =+  apibase="https://api.github.com/repos/"
+      ::  We want to know what we're requestion (issue, repo, etc.) so we can put it in the wire.
+      ::TODO  Ideally you want to set this below, when you also define the api url.
+      =+  ^=  kind
+        ?:  (gth (lent slashes) 4)
+          %issue
+        %repo
       =+  ^=  api  ^-  cord
         ?^  (find "/issues/" turl)
           (crip (weld apibase (swag [19 (lent turl)] turl)))
         ?^  (find "/pull/" turl)
           (crip :(weld apibase (swag [19 (sub (snag 4 slashes) 19)] turl) "/issues" (swag [(snag 5 slashes) 6] turl)))
-        (crip (weld apibase (swag [19 (sub (lent turl) 19)] turl)))  ::  Just make a generic api call.
+        ::  Just make a generic api call for the repo if we don't know what else to do.
+        =+  ^=  endi
+          ?:  (gth (lent slashes) 4)
+            (snag 5 slashes)
+          (lent turl)
+        (crip (weld apibase (swag [19 (sub endi 19)] turl)))
       =+  url=(epur api)
       ?~  url
         ~&  [%failed-epur-for api]
         [~ ~]
-      [[~ [ost %hiss /gh ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
+      [[~ [ost %hiss /gh/[kind] ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
     ?:  =((find "http://pastebin.com/" turl) [~ 0])
       :: Pastebin doesn't provide API access to paste data (ie title), so just get the page.
       =+  url=(epur (crip turl))
@@ -253,11 +261,25 @@
     ~&  [%invalid-wire]
     [~ +>.$]
   ?:  =(i.wir %gh)  ::  GitHub
-    =+  json=(poja q.u.body)
-    ?~  json
+    =+  jon=(fall (poja q.u.body) ~)
+    ?~  t.wir
+      ~&  [%gh-no-wire wir]
       [~ +>.$]
-    ?.  ?=({$o *} u.json)
-      ~&  [%no-title]
+    ?:  =(i.t.wir %issue)
+      =+  iss=(fall (issue:gh-parse jon) ~)
+      ?~  iss
+        [~ +>.$]
+      =+  slashes=(fand "/" (trip url.iss))
+      =+  si=(add (snag 3 slashes) 1)
+      =+  repo=(swag [si (sub (snag 5 slashes) si)] (trip url.iss))
+      [[(send tmpstation :(weld repo ": " (trip title.iss))) ~] +>.$]
+    ?:  =(i.t.wir %repo)
+      =+  rep=(fall (repository:gh-parse jon) ~)
+      ?~  rep
+        [~ +>.$]
+      [[(send tmpstation :(weld (trip full-name.rep) ": " (trip description.rep))) ~] +>.$]
+    ~&  [%gh-unknown-wire wir]
+    [~ +>.$]
       [~ +>.$]
     =+  ^=  info  ^-  tape
       =+  desc=(fall (~(get by p.u.json) 'description') ~)
