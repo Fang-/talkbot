@@ -2,12 +2,6 @@
 ::  Responds when talked to, provides titles of GitHub issues and PRs when linked.
 ::  To begin, start and :talkbot [%join ~ship ~.channel]
 
-::TODO  Robustly support multiple messages from different channels at the same
-::      time by putting received messages into a queue that is constantly processed.
-::      (As it is now, tmpstation can be overwritten if we receive messages too swiftly.)
-::TODO  Give descriptions for rnues and stdlib functions when asked.
-::TODO  Use ;: and %+ etc for cleaner-looking code.
-
 /-  talk
 /+  talk, gh-parse
 !:
