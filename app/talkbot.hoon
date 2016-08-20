@@ -195,9 +195,10 @@
       [[~ (send aud "Pong.")] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
+      =+  statnom=:(weld (scow %p p.aud) "/" (scow %tas q.aud))
       ?:  (gth ~(wyt by memlist) 0)
-        [[~ (send aud :(weld "There are currently " (scow %u ~(wyt by memlist)) " ships here."))] ~]
-      [[~ (send aud :(weld "I don't have member data for this station yet, sorry!"))] ~]
+        [[~ (send aud :(weld "There are currently " (scow %u ~(wyt by memlist)) " ships in " statnom "."))] ~]
+      [[~ (send aud :(weld "I don't have member data for " statnom " yet, sorry!"))] ~]
     ?:  =((find "~ignoreme" tmsg) [~ 0])
       [~ [~ [%ignore p.gram]]]
     ?:  =((find "~chopra" tmsg) [~ 0])
