@@ -173,6 +173,15 @@
     =+  tmsg=(trip q.msg)
     ::  React when we are talked about.
     ?^  (find "talkbot" tmsg)
+      =+  ^=  source
+        ?^  (find "code" tmsg)  &
+        ?^  (find "repo" tmsg)  &
+        ?^  (find "source" tmsg)  &
+        |
+      ?^  (find "?" tmsg)  ::  where, there
+        ?:  source
+          [[~ (send aud "https://github.com/Fang-/talkbot")] ~]
+        [~ ~]
       ::  If someone greets us, greet them back by name.
       =+  ^=  greeted
         ::TODO  Matches on things like "the talkbot they built"
