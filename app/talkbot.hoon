@@ -204,6 +204,26 @@
       [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
     ?:  =("ping" tmsg)
       [[~ (send aud "Pong.")] ~]
+    ?:  ?|  =("what is urbit?" tmsg)
+            =("what's urbit?" tmsg)
+            =("what is this?" tmsg)
+            =("what's this?" tmsg)
+        ==
+      =+  ^=  resplist  ^-  (list tape)                                   ::
+        :~  "Urbit is a p2p network of personal servers."
+            "Urbit is an os with shared global state."
+            "An Urbit is a cryptographic personal identity."
+            "Urbit is a self-proclaimed virtual city in the cloud."
+            "Urbit is to real estate as Bitcoin is to currency."
+            "Urbit is the future."
+            "Urbit is definitely not a scamcoin."
+            "What is Urbit not?"
+            "I'd like to interject for a moment. What you're referring to "
+        ==
+      ::TODO  Probably wrap RNG in a function.
+      =+  rando=~(. og eny)
+      =^  r  rando  (rads:rando (lent resplist))
+      [[~ (send aud (snag r resplist))] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
       =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
