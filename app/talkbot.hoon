@@ -127,11 +127,13 @@
     =+  stat=(fall (station-from-wire wir) ~)
     ::  If we can't parse the ship from the wire, jump out.
     ?~  stat
+      ~&  [%unparsable-wire-address wir]
       [~ +>.$]
     ::  Verify we know the station we deduced from the wire.
     ?.  (~(has by joined) stat)
-      ~&  [%unknown-wire-address stat]
-      [~ +>.$]
+      ~&  [%unknown-wire-address wir]
+      ~&  [%leaving stat]
+      [[[ost %pull wir [p.stat %talk] ~] ~] +>.$]
     =+  oldmems=(fall (~(get by joined) stat) ~)
     :_  +>.$(joined (~(put by joined) stat p.rep))
     ::  To avoid greet-bombing, only continue when a single new ship joined.
@@ -210,7 +212,7 @@
     =+  slashes=(fand "/" turl)
     ?:  =((find "https://github.com/" turl) [~ 0])
       =+  apibase="https://api.github.com/repos/"
-      ::  We want to know what we're requestion (issue, repo, etc.) so we can put it in the wire.
+      ::  We want to know what we're requesting (issue, repo, etc.) so we can put it in the wire.
       ::TODO  Ideally you want to set this below, when you also define the api url.
       =+  ^=  kind
         ?:  (gth (lent slashes) 4)
@@ -263,6 +265,7 @@
     ?:  =(i.t.wir %issue)
       =+  iss=(fall (issue:gh-parse jon) ~)
       ?~  iss
+        ~&  [%gh-issue-parse-failed jon]
         [~ +>.$]
       =+  slashes=(fand "/" (trip url.iss))
       =+  si=(add (snag 3 slashes) 1)
@@ -271,6 +274,7 @@
     ?:  =(i.t.wir %repo)
       =+  rep=(fall (repository:gh-parse jon) ~)
       ?~  rep
+        ~&  [%gh-repo-parse-failed jon]
         [~ +>.$]
       [[(send tmpstation :(weld (trip full-name.rep) ": " (trip description.rep))) ~] +>.$]
     ~&  [%gh-unknown-wire wir]
