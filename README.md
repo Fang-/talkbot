@@ -2,6 +2,8 @@
 
 Urbit's first ever talkbot. Say hello to `~talkbot` in chat! Tries to be useful, but doesn't do the dishes.
 
+Want to make your own, from scratch? [Urbit By Doing](https://github.com/Fang-/Urbit-By-Doing) can teach you how!
+
 ## Functionality
 
 When responding to a message, ~talkbot tries to use the message's audience. For complex audiences this does not yet work well. (It has a special case for the different urbit-meta channels, always sending replies to ~binzod/urbit-meta if the audience includes any official urbit-meta channel.)
