@@ -172,6 +172,8 @@
   {$lin *}  ::  Regular message.
     =+  tmsg=(trip q.msg)
     ::  React when we are talked about.
+    ?^  (find "pongbot" tmsg)
+      [[~ (send aud "Ping-pong isn't all I can do!")] ~]
     ?^  (find "talkbot" tmsg)
       =+  ^=  source
         ?^  (find "code" tmsg)  &
@@ -204,6 +206,10 @@
       [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
     ?:  =("ping" tmsg)
       [[~ (send aud "Pong.")] ~]
+      ?:  =("beep" tmsg)
+        [[~ (send aud "Boop.")] ~]
+    ?:  |(=("test" tmsg) =("testing" tmsg))
+      [[~ (send aud "Test successful!")] ~]
     ?:  ?|  =("what is urbit?" tmsg)
             =("what's urbit?" tmsg)
             =("what is this?" tmsg)
