@@ -9,13 +9,16 @@ Want to make your own, from scratch? [Urbit By Doing](https://github.com/Fang-/U
 When responding to a message, ~talkbot tries to use the message's audience. For complex audiences this does not yet work well. (It has a special case for the different urbit-meta channels, always sending replies to ~binzod/urbit-meta if the audience includes any official urbit-meta channel.)
 
 * Does various bits of chit-chat.
-* Welcomes users when they join a station.
+* Welcomes users when they join a station. (Disabled in live version.)
 * Provides titles of Github repositories and issues/pull requests when linked.
 * Provides Pastebin paste titles (if they're titled).
+* Can perform functionality on command.
 
 ### Commands
 
 * `ping` Replies with "Pong."
+* `~talkping` Measures round-time to station by sending a message.
+* `~myping` Measures round-time to caller by using `|hi`.
 * `~ignoreme` To have ~talkbot ignore your messages.
 * `~unignoreme` (or `~noticeme`) to make ~talkbot respond to your messages again.
 * `~whocount` Posts the amount of ships currently in the station.
@@ -26,6 +29,7 @@ When responding to a message, ~talkbot tries to use the message's audience. For 
 * Automatically post about new issues and pull requests in Urbit repositories.
 * Short-form explanations for runes and terms.
 * Talking to users when chat is quiet.
+* So much more.
 
 ## Contributing
 

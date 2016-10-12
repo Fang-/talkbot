@@ -161,8 +161,6 @@
   ^-  (pair (unit move) (unit update))
   =*  msg  r.r.q.gram
   =+  aud=(get-audience-station-naive q.q.gram)
-  ?:  =(p.gram our)  ::  Ignore ourselves.
-    [~ ~]
   ?^  (find [p.gram]~ ignoring)  ::  If we're ignoring a user, only acknowledge ~unignorme/~noticeme.
     ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
       [~ [~ [%unignore p.gram]]]
@@ -171,6 +169,11 @@
     [~ ~]
   {$lin *}  ::  Regular message.
     =+  tmsg=(trip q.msg)
+    ?:  =(p.gram our)  ::  We may be interested in our own messages.
+      ?:  =(":: measuring ping..." tmsg)
+        =+  ping=(div (mul 1.000 (sub now p.r.q.gram)) ~s1)
+        [[~ (send aud :(weld (scow %u ping) " ms (talk round-trip from me to " (scow %p p.aud) "/" (trip q.aud) ")"))] ~]
+      [~ ~]
     ?:  =((find "::" tmsg) [~ 0])  ::  Ignore other bot's messages.
       [~ ~]
     ::  React when we are talked about.
@@ -244,6 +247,10 @@
       ::TODO  Probably wrap RNG in a function.
       [[~ (send aud (snag (random 0 (lent resplist)) resplist))] ~]
     ::  COMMANDS
+    ?:  =((find "~talkping" tmsg) [~ 0])
+      [[~ (send aud "Measuring ping...")] ~]
+    ?:  =((find "~myping" tmsg) [~ 0])
+      [[~ [ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [~palfun-foslup %hood] %helm-hi '']] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
       =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
@@ -410,6 +417,19 @@
     [~ +>.$]
   ~&  [%joined stat]
   [~ +>.$(joined (~(put by joined) stat *atlas:talk))]
+
+++  coup-ping
+  |=  {wir/wire *}
+  ^-  {(list move) _+>.$}
+  :_  +>.$
+  ?.  ?=({@ta @ta @ta *} wir)
+    ~&  [%incorrect-ping-wire]
+    ~
+  =+  stat=(station-from-wire wir)
+  ?~  stat
+    ~
+  =+  ping=(div (mul 1.000 (sub now `@da`(slav %da i.t.t.wir))) ~s1)
+  [(send u.stat (weld (scow %u ping) " ms (round-trip from me to you)")) ~]
 
 ++  station-from-wire
   |=  wir/wire
