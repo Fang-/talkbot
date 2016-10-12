@@ -211,11 +211,17 @@
       [~ ~]
     ::  If our ship name is mentioned, inform that we are a bot.
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
+      ?:  (chance 10)
+        [[~ (send aud "Yes, hello fellow human.")] ~]
       [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
     ?:  =("ping" tmsg)
+      ?:  (chance 5)
+        [[~ (send aud "[ping-pong intensifies]")] ~]
       [[~ (send aud "Pong.")] ~]
-      ?:  =("beep" tmsg)
-        [[~ (send aud "Boop.")] ~]
+    ?:  =("beep" tmsg)
+      ?:  (chance 5)
+        [[~ (send aud "[robot noises]")] ~]
+      [[~ (send aud "Boop.")] ~]
     ?:  |(=("test" tmsg) =("testing" tmsg))
       [[~ (send aud "Test successful!")] ~]
     ?:  ?|  =("what is urbit?" tmsg)
@@ -236,9 +242,7 @@
             "I'd like to interject for a moment. What you're referring to "
         ==
       ::TODO  Probably wrap RNG in a function.
-      =+  rando=~(. og eny)
-      =^  r  rando  (rads:rando (lent resplist))
-      [[~ (send aud (snag r resplist))] ~]
+      [[~ (send aud (snag (random 0 (lent resplist)) resplist))] ~]
     ::  COMMANDS
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
@@ -437,5 +441,17 @@
   ?:  =(%pawn kind)
     :(weld (swag [0 7] name) "_" (swag [51 6] name))
   name
+
+++  random  :: Random number >=min, <max
+  |=  {min/@ max/@}
+  ^-  @
+  =+  rng=~(. og eny)
+  =^  r  rng  (rads:rng max)
+  (add min r)
+
+++  chance  :: Has perc% chance of returning true.
+  |=  perc/@
+  ^-  ?
+  (lth (random 0 101) perc)
 
 --
