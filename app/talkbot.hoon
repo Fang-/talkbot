@@ -171,13 +171,15 @@
     [~ ~]
   {$lin *}  ::  Regular message.
     =+  tmsg=(trip q.msg)
+    ?:  =((find "::" tmsg) [~ 0])  ::  Ignore other bot's messages.
+      [~ ~]
     ::  React when we are talked about.
     ?^  (find "pongbot" tmsg)
       [[~ (send aud "Ping-pong isn't all I can do!")] ~]
     ?^  (find "talkbot" tmsg)
       =+  ^=  source
-        ?^  (find "code" tmsg)  &
-        ?^  (find "repo" tmsg)  &
+        ?^  (find " code" tmsg)  &  ::  Prevent "encode" etc.
+        ?^  (find " repo" tmsg)  &  ::  Prevent "preponderance" etc.
         ?^  (find "source" tmsg)  &
         |
       ?^  (find "?" tmsg)  ::  where, there
@@ -191,11 +193,17 @@
         ?^  (find "hey" tmsg)  &
         ?^  (find "hello" tmsg)  &
         ?^  (find "greetings" tmsg)  &
+        ?^  (find "salve" tmsg)  &
         |
       ?:  greeted
         [[~ (send aud :(weld "Hello " (ship-firstname p.gram) "!"))] ~]
       ::  If we're thanked, respond.
-      ?^  (find "thank" tmsg)
+      =+  ^=  praised
+        ?^  (find "thank" tmsg)  &
+        ?^  (find "good job" tmsg)  &
+        ?^  (find "gj" tmsg)  &
+        |
+      ?:  praised
         [[~ (send aud "You're welcome!")] ~]
       ::  If we're told to shut up, tell them about ~ignoreme.
       ?^  (find "shut up" tmsg)
@@ -224,12 +232,14 @@
             "Urbit is the future."
             "Urbit is definitely not a scamcoin."
             "What is Urbit not?"
+            "You tell me."
             "I'd like to interject for a moment. What you're referring to "
         ==
       ::TODO  Probably wrap RNG in a function.
       =+  rando=~(. og eny)
       =^  r  rando  (rads:rando (lent resplist))
       [[~ (send aud (snag r resplist))] ~]
+    ::  COMMANDS
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
       =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
@@ -400,13 +410,14 @@
 ++  station-from-wire
   |=  wir/wire
   ^-  (unit station:talk)
-  ?.  ?=({@tas @tas *} wir)
+  ?.  ?=({@ta @ta *} wir)
+    ~&  [%incorrect-station-wire]
     ~
   =+  ship=(fall `(unit @p)`(slaw %p i.wir) ~)
   ?~  ship
     ~&  [%unparsable-wire-station wir]
     ~
-  =+  channel=(crip (slag 1 (spud t.wir)))
+  =+  channel=i.t.wir
   [~ [ship channel]]
 
 ++  ship-firstname
