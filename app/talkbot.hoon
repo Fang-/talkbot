@@ -247,10 +247,10 @@
       ::TODO  Probably wrap RNG in a function.
       [[~ (send aud (snag (random 0 (lent resplist)) resplist))] ~]
     ::  COMMANDS
-    ?:  =((find "~talkping" tmsg) [~ 0])
+    ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
       [[~ (send aud "Measuring ping...")] ~]
-    ?:  =((find "~myping" tmsg) [~ 0])
-      [[~ [ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [~palfun-foslup %hood] %helm-hi '']] ~]
+    ?:  |(=((find "~myping" tmsg) [~ 0]) =((find "~pingme" tmsg) [~ 0]))
+      [[~ [ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping']] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
       =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
