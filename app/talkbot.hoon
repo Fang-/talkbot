@@ -11,7 +11,7 @@
 ++  card
   $%  {$peer wire {@p term} path}
       {$pull wire {@p term} $~}
-      {$poke wire {@p term} *}
+      {$poke wire {@p term} {$talk-command command:talk}}
       {$hiss wire $~ $httr {$purl p/purl}}
   ==
 ++  action
