@@ -8,12 +8,15 @@
 
 |%
 ++  move  {bone card}
+++  poke-content
+  $%  {$noun action}
+      {$helm-hi cord}
+      {$talk-command command:talk}
+  ==
 ++  card
   $%  {$peer wire {@p term} path}
       {$pull wire {@p term} $~}
-      {$poke wire {@p term} $noun action}
-      {$poke wire {@p term} $helm-hi cord}
-      {$poke wire {@p term} $talk-command command:talk}
+      {$poke wire {@p term} poke-content}
       {$hiss wire $~ $httr {$purl p/purl}}
   ==
 ++  action
