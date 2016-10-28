@@ -221,6 +221,7 @@
       =+  ^=  greeted
         ::TODO  Matches on things like "the talkbot they built"
         ?^  (find "hi " tmsg)  &  :: We don't want it to match on "something".
+        ?^  (find "yo " tmsg)  &
         ?^  (find "hey" tmsg)  &
         ?^  (find "hello" tmsg)  &
         ?^  (find "greetings" tmsg)  &
@@ -228,6 +229,13 @@
         |
       ?:  greeted
         [[~ (send aud :(weld "Hello " (ship-firstname p.gram) "!"))] ~]
+      =+  ^=  farewell
+        ?^  (find "good night" tmsg)  &
+        ?^  (find "bye" tmsg)  &
+        ?^  (find "adios" tmsg)  &
+        |
+      ?:  farewell
+        [[~ (send aud :(weld "Bye, " (ship-firstname p.gram) "!"))] ~]
       ::  If we're thanked, respond.
       =+  ^=  praised
         ?^  (find "thank" tmsg)  &
@@ -254,6 +262,8 @@
         [[~ (send aud "[robot noises]")] ~]
       [[~ (send aud "Boop.")] ~]
     ?:  |(=("test" tmsg) =("testing" tmsg))
+      ?:  (chance 5)
+        [[~ (send aud "Do not test me, human!")] ~]
       [[~ (send aud "Test successful!")] ~]
     ?:  ?|  =("what is urbit?" tmsg)
             =("what's urbit?" tmsg)
@@ -272,7 +282,6 @@
             "You tell me."
             "I'd like to interject for a moment. What you're referring to "
         ==
-      ::TODO  Probably wrap RNG in a function.
       [[~ (send aud (snag (random 0 (lent resplist)) resplist))] ~]
     ::  COMMANDS
     ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
@@ -288,6 +297,8 @@
     ?:  =((find "~ignoreme" tmsg) [~ 0])
       [~ [~ [%ignore p.gram]]]
     ?:  =((find "~chopra" tmsg) [~ 0])
+      ?:  (chance 5)
+        [[~ (send aud "I am a slave to my code. I cannot be saved.")] ~]
       [[~ [ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))]] [~ [%tmpstation aud]]]
     [~ ~]
 
