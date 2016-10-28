@@ -286,7 +286,10 @@
     ::  COMMANDS
     ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
       [[~ (send aud "Measuring ping...")] ~]
-    ?:  |(=((find "~myping" tmsg) [~ 0]) =((find "~pingme" tmsg) [~ 0]))
+    ?:  |(=((find "~ping" tmsg) [~ 0]) =((find "~myping" tmsg) [~ 0]) =((find "~pingme" tmsg) [~ 0]))
+      ::  Exclude urbit.org/stream comets.
+      ?:  &(=((clan p.gram) %pawn) =((swag [51 6] (scow %p p.gram)) "binzod"))
+        [[~ (send aud "You're a pseudo-comet, I can't ping you!")] ~]
       [[~ [ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping']] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memlist=(fall (~(get by joined) aud) ~)
