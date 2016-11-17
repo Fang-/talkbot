@@ -87,6 +87,7 @@
 ++  diff-talk-report
   |=  {wir/wire rep/report:talk}
   ^-  {(list move) _+>.$}
+
   ::  First, do a check to see if we intend to be subscribed to this station.
   ::  (There is some weirdness with subscriptions, this should notice and delete unwanted ones.)
   =+  wirstat=(fall (station-from-wire wir) ~)
@@ -99,10 +100,14 @@
     ~&  [%unknown-wire-station wirstat]
     ~&  [%leaving wirstat]
     [[[ost %pull wir [p.wirstat %talk] ~] ~] +>.$]
+
+  ::  Default talk report: Do nothing.
   ?+  rep
     ~&  [%report rep]
     [~ +>.$]
-  {$grams *}  ::  Message list.
+
+  ::  Message list.
+  {$grams *}
     =+  i=(lent q.rep)
     =|  moves/(list move)
     |-  ^-  {(list move) _+>.^$}
@@ -138,7 +143,8 @@
       $
     $(tmpstation s.u.q.updres, ignoring i.u.q.updres)
 
-  {$group *}  ::  Users in channel.
+  ::  Users in station.
+  {$group *}
     ::  We're going to count the amount of active members in this station and
     ::  compare it to our last known value.
     ::  Since $group reports don't contain the station it came from, we have to
@@ -514,7 +520,7 @@
   ^-  {(list move) _+>.$}
   :_  +>.$
   ?.  ?=({@ta @ta @ta *} wir)
-    ~&  [%incorrect-ping-wire]
+    ~&  [%incorrect-ping-wire wir]
     ~
   =+  stat=(station-from-wire wir)
   ?~  stat
@@ -526,7 +532,7 @@
   |=  wir/wire
   ^-  (unit station:talk)
   ?.  ?=({@ta @ta *} wir)
-    ~&  [%incorrect-station-wire]
+    ~&  [%incorrect-station-wire wir]
     ~
   =+  ship=(fall `(unit @p)`(slaw %p i.wir) ~)
   ?~  ship
