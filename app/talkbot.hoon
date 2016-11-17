@@ -34,7 +34,7 @@
   ==
 --
 
-|_  {bowl joined/(map station:talk atlas:talk) ignoring/(list @p) tmpstation/station:talk}
+|_  {bowl joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk}
 
 ++  poke-noun
   ::TODO  Should probably check if %peers and %pulls succeed (using reap) before
@@ -87,6 +87,18 @@
 ++  diff-talk-report
   |=  {wir/wire rep/report:talk}
   ^-  {(list move) _+>.$}
+  ::  First, do a check to see if we intend to be subscribed to this station.
+  ::  (There is some weirdness with subscriptions, this should notice and delete unwanted ones.)
+  =+  wirstat=(fall (station-from-wire wir) ~)
+  ::  If the wire can't be parsed into a station, jump out. This shouldn't happen?
+  ?~  wirstat
+    ~&  [%unparsable-wire-station wir]
+    [~ +>.$]
+  ::  Verify we know the station we deduced from the wire.
+  ?.  (~(has by joined) wirstat)
+    ~&  [%unknown-wire-station wirstat]
+    ~&  [%leaving wirstat]
+    [[[ost %pull wir [p.wirstat %talk] ~] ~] +>.$]
   ?+  rep
     ~&  [%report rep]
     [~ +>.$]
@@ -98,8 +110,8 @@
       [moves +>.^$]
     =.  i  (sub i 1)
     =+  gram=(snag i q.rep)
-    =+  res=(read-telegram gram)  ::  (pair (unit move) (unit update))
-    =.  moves  ?~(p.res moves [u.p.res moves])
+    =+  res=(read-telegram gram)  ::  (pair (list move) (unit update))
+    =.  moves  (weld p.res moves)
     =+  upd=(fall q.res ~)
     =+  ^=  updres  ^-  (pair (unit move) (unit {s/station:talk i/(list @p)}))
       ?-  upd
@@ -127,33 +139,30 @@
     $(tmpstation s.u.q.updres, ignoring i.u.q.updres)
 
   {$group *}  ::  Users in channel.
+    ::  We're going to count the amount of active members in this station and
+    ::  compare it to our last known value.
     ::  Since $group reports don't contain the station it came from, we have to
-    ::  deduce it from the wire.
-    =+  stat=(fall (station-from-wire wir) ~)
-    ::  If we can't parse the ship from the wire, jump out.
-    ?~  stat
-      ~&  [%unparsable-wire-address wir]
-      [~ +>.$]
-    ::  Verify we know the station we deduced from the wire.
-    ?.  (~(has by joined) stat)
-      ~&  [%unknown-wire-address wir]
-      ~&  [%leaving stat]
-      [[[ost %pull wir [p.stat %talk] ~] ~] +>.$]
-    =+  oldmems=(fall (~(get by joined) stat) ~)
-    :_  +>.$(joined (~(put by joined) stat p.rep))
-    ::  To avoid greet-bombing, only continue when a single new ship joined.
-    ?.  =((dec ~(wyt by p.rep)) ~(wyt by oldmems))
+    ::  use the wire-deduced station.
+    =+  oldcount=(fall (~(get by joined) wirstat) 0)
+    ::  Only count active members. (%hear and %talk, not %gone)
+    =+  ^=  newcount
+      %-  lent
+      %+  skip
+        ~(val by p.rep)
+        |=  status/status:talk
+        =(p.status %gone)
+    :_  +>.$(joined (~(put by joined) wirstat newcount))
+    ?:  =(newcount oldcount)
       ~
-    =+  diff=(~(dif in p.rep) oldmems)
-    ?.  =(~(wyt by diff) 1)
-      ~&  [%weird-mem-diff-num ~(wyt by diff)]
-      ~
-    ::  This feels kind of naive, but it works.
-    =+  newmem=(head (~(tap by diff)))
-    ?:  =(p.newmem our)
-      ~
-    ::  Finally, greet the newly joined ship.
-    [(send stat :(weld "Welcome, " (ship-firstname p.newmem) "!")) ~]
+    ::  Log new memcount to logging server.
+    =+  ^=  url
+    ;:  weld
+      "https://403.fang.io/talkbot/memcount.php"
+      "?stationship="  (scow %p p.wirstat)
+      "&stationchannel="  (trip q.wirstat)
+      "&memcount="  (scow %ud newcount)
+    ==
+    [[ost %hiss /log/memcount ~ %httr %purl (need (epur (crip url)))] ~]
 
   {$cabal *}  ::  Channel info.
     ~&  [%got-cabal rep]
@@ -163,13 +172,36 @@
 
 ++  read-telegram
   |=  gram/telegram:talk
-  ^-  (pair (unit move) (unit update))
+  ^-  (pair (list move) (unit update))
+  =|  moves/(list move)
   =*  msg  r.r.q.gram
   =+  aud=(get-audience-station-naive q.q.gram)
   ?^  (find [p.gram]~ ignoring)  ::  If we're ignoring a user, only acknowledge ~unignorme/~noticeme.
     ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
       [~ [~ [%unignore p.gram]]]
     [~ ~]
+  =+  ^=  lmsg
+    ?:  ?=({$lin *} msg)
+      (trip q.msg)
+    ?:  ?=({$url *} msg)
+      (earf p.msg)
+    "::  unsupported message content  ::"
+  ::  First and foremost, make a move to log the message.
+  =+  ^=  logurl
+    ;:  weld
+      ::"https://403.fang.io/talkbot/message.php"
+      "http://localhost:9080/path/without/host"
+      "?message="  (urle lmsg)
+      "&sender="  (scow %p p.gram)
+      "&stationship="  (scow %p p.aud)
+      "&stationchannel="  (trip q.aud)
+      "&timestamp="  (scow %da p.r.q.gram)
+    ==
+  ::TODO renable when url encode bug gets fixed 772 784
+  ::~&  [%crip (crip logurl)]
+  ::~&  [%epur (epur (crip logurl))]
+  ::=.  moves  [[ost %hiss /log/message ~ %httr %purl (need (epur (crip logurl)))] moves]
+  ::  Then, start processing it.
   ?+  msg
     [~ ~]
   {$lin *}  ::  Regular message.
@@ -177,13 +209,13 @@
     ?:  =(p.gram our)  ::  We may be interested in our own messages.
       ?:  =(":: measuring ping..." tmsg)
         =+  ping=(div (mul 1.000 (sub now p.r.q.gram)) ~s1)
-        [[~ (send aud :(weld (scow %u ping) " ms (talk round-trip from me to " (scow %p p.aud) "/" (trip q.aud) ")"))] ~]
-      [~ ~]
+        [[(send aud :(weld (scow %u ping) " ms (talk round-trip from me to " (scow %p p.aud) "/" (trip q.aud) ")")) moves] ~]
+      [moves ~]
     ?:  =((find "::" tmsg) [~ 0])  ::  Ignore other bot's messages.
-      [~ ~]
+      [moves ~]
     ::  React when we are talked about.
     ?^  (find "pongbot" tmsg)
-      [[~ (send aud "Ping-pong isn't all I can do!")] ~]
+      [[(send aud "Ping-pong isn't all I can do!") moves] ~]
     ?^  (find "talkbot" tmsg)
       =+  ^=  source
         ?^  (find " code" tmsg)  &  ::  Prevent "encode" etc.
@@ -193,8 +225,8 @@
       =+  qmark=(find "?" tmsg)
       ?^  qmark
         ?:  source
-          [[~ (send aud "https://github.com/Fang-/talkbot")] ~]
-        =+  tbc=(find "talkbot," tmsg)
+          [[(send aud "https://github.com/Fang-/talkbot") moves] ~]
+        =+  tbc=(find "talkbot" tmsg)
         ?:  &(|(=(tbc [~ 0]) =(tbc [~ 1])) =(qmark [~ (sub (lent tmsg) 1)]))
           =+  ^=  resplist  ^-  (list tape)                                   ::
             :~  "It is certain."
@@ -218,8 +250,8 @@
                 "Outlook not so good."
                 "Very doubtful."
             ==
-          [[~ (send aud (snag (random 0 (lent resplist)) resplist))] ~]
-        [~ ~]
+          [[(send aud (snag (random 0 (lent resplist)) resplist)) moves] ~]
+        [moves ~]
       ::  If someone greets us, greet them back by name.
       =+  ^=  greeted
         ::TODO  Matches on things like "the talkbot they built"
@@ -231,14 +263,14 @@
         ?^  (find "salve" tmsg)  &
         |
       ?:  greeted
-        [[~ (send aud :(weld "Hello " (ship-firstname p.gram) "!"))] ~]
+        [[(send aud :(weld "Hello " (ship-firstname p.gram) "!")) moves] ~]
       =+  ^=  farewell
         ?^  (find "good night" tmsg)  &
         ?^  (find "bye" tmsg)  &
         ?^  (find "adios" tmsg)  &
         |
       ?:  farewell
-        [[~ (send aud :(weld "Bye, " (ship-firstname p.gram) "!"))] ~]
+        [[(send aud :(weld "Bye, " (ship-firstname p.gram) "!")) moves] ~]
       ::  If we're thanked, respond.
       =+  ^=  praised
         ?^  (find "thank" tmsg)  &
@@ -246,28 +278,28 @@
         ?^  (find "gj" tmsg)  &
         |
       ?:  praised
-        [[~ (send aud "You're welcome!")] ~]
+        [[(send aud "You're welcome!") moves] ~]
       ::  If we're told to shut up, tell them about ~ignoreme.
       ?^  (find "shut up" tmsg)
-        [[~ (send aud "Want me to ignore you? Send `~ignoreme`.")] ~]
-      [~ ~]
+        [[(send aud "Want me to ignore you? Send `~ignoreme`.") moves] ~]
+      [moves ~]
     ::  If our ship name is mentioned, inform that we are a bot.
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
       ?:  (chance 10)
-        [[~ (send aud "Yes, hello fellow human.")] ~]
-      [[~ (send aud "Call me ~talkbot, beep boop!")] ~]
+        [[(send aud "Yes, hello fellow human.") moves] ~]
+      [[(send aud "Call me ~talkbot, beep boop!") moves] ~]
     ?:  =("ping" tmsg)
       ?:  (chance 5)
-        [[~ (send aud "[ping-pong intensifies]")] ~]
-      [[~ (send aud "Pong.")] ~]
+        [[(send aud "[ping-pong intensifies]") moves] ~]
+      [[(send aud "Pong.") moves] ~]
     ?:  =("beep" tmsg)
       ?:  (chance 5)
-        [[~ (send aud "[robot noises]")] ~]
-      [[~ (send aud "Boop.")] ~]
+        [[(send aud "[robot noises]") moves] ~]
+      [[(send aud "Boop.") moves] ~]
     ?:  |(=("test" tmsg) =("testing" tmsg))
       ?:  (chance 5)
-        [[~ (send aud "Do not test me, human!")] ~]
-      [[~ (send aud "Test successful!")] ~]
+        [[(send aud "Do not test me, human!") moves] ~]
+      [[(send aud "Test successful!") moves] ~]
     ?:  ?|  =("what is urbit?" tmsg)
             =("what's urbit?" tmsg)
             =("what is this?" tmsg)
@@ -285,28 +317,28 @@
             "You tell me."
             "I'd like to interject for a moment. What you're referring to "
         ==
-      [[~ (send aud (snag (random 0 (lent resplist)) resplist))] ~]
+      [[(send aud (snag (random 0 (lent resplist)) resplist)) moves] ~]
     ::  COMMANDS
     ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
-      [[~ (send aud "Measuring ping...")] ~]
+      [[(send aud "Measuring ping...") moves] ~]
     ?:  |(=((find "~ping" tmsg) [~ 0]) =((find "~myping" tmsg) [~ 0]) =((find "~pingme" tmsg) [~ 0]))
       ::  Exclude urbit.org/stream comets.
       ?:  &(=((clan p.gram) %pawn) =((swag [51 6] (scow %p p.gram)) "binzod"))
-        [[~ (send aud "You're a pseudo-comet, I can't ping you!")] ~]
-      [[~ [ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping']] ~]
+        [[(send aud "You're a pseudo-comet, I can't ping you!") moves] ~]
+      [[[ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping'] moves] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
-      =+  memlist=(fall (~(get by joined) aud) ~)
+      =+  memcount=(fall (~(get by joined) aud) 0)
       =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
-      ?:  (gth ~(wyt by memlist) 0)
-        [[~ (send aud :(weld "There are currently " (scow %u ~(wyt by memlist)) " ships in " statnom "."))] ~]
-      [[~ (send aud :(weld "I don't have member data for " statnom " yet, sorry!"))] ~]
+      ?:  (gth memcount 0)
+        [[(send aud :(weld "Currently " (scow %u memcount) " active ships in " statnom ".")) moves] ~]
+      [[(send aud :(weld "I don't have member data for " statnom " yet, sorry!")) moves] ~]
     ?:  =((find "~ignoreme" tmsg) [~ 0])
-      [~ [~ [%ignore p.gram]]]
+      [moves [~ [%ignore p.gram]]]
     ?:  =((find "~chopra" tmsg) [~ 0])
       ?:  (chance 5)
-        [[~ (send aud "I am a slave to my code. I cannot be saved.")] ~]
-      [[~ [ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))]] [~ [%tmpstation aud]]]
-    [~ ~]
+        [[(send aud "I am a slave to my code. I cannot be saved.") ~] ~]
+      [[[ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))] ~] [~ [%tmpstation aud]]]
+    [moves ~]
 
   {$url *}  ::  Parsed URL.
     =+  turl=(earf p.msg)
@@ -334,16 +366,30 @@
       ?~  url
         ~&  [%failed-epur-for api]
         [~ ~]
-      [[~ [ost %hiss /gh/[kind] ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
+      [[[ost %hiss /gh/[kind] ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
     ?:  =((find "http://pastebin.com/" turl) [~ 0])
       :: Pastebin doesn't provide API access to paste data (ie title), so just get the page.
       =+  url=(epur (crip turl))
       ?~  url
         ~&  [%failed-epur-for turl]
         [~ ~]
-      [[~ [ost %hiss /pb ~ %httr %purl u.url]] [~ [%tmpstation aud]]]
+      [[[ost %hiss /pb ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
     [~ ~]
   ==
+
+++  sigh-httr-log
+  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
+  ^-  {(list move) _+>.$}
+  ?.  &((gte code 200) (lth code 300))
+    ~&  [%we-have-a-problem code]
+    ~&  [%headers headers]
+    ~&  [%body body]
+    [~ +>.$]
+  ?~  body
+    [~ +>.$]
+  ~&  [%sigh-httr-log wir]
+  ~&  body
+  [~ +>.$]
 
 ++  sigh-httr
   |=  {wir/wire code/@ud headers/mess body/(unit octs)}
@@ -461,7 +507,7 @@
     ~&  [%unexpected-reap wir]
     [~ +>.$]
   ~&  [%joined stat]
-  [~ +>.$(joined (~(put by joined) stat *atlas:talk))]
+  [~ +>.$(joined (~(put by joined) stat 0))]
 
 ++  coup-ping
   |=  {wir/wire *}
