@@ -1,6 +1,8 @@
 # ~Talkbot
 
-Urbit's first ever talkbot. Say hello to `~talkbot` in chat! Tries to be useful, but doesn't do the dishes.
+Urbit's first ever talkbot. Say hello to `~talkbot` in chat! It tries to be useful, but doesn't do the dishes.
+
+**The current code is not reference quality**. A cleanup of this mess is planned, but there's no ETA.
 
 Want to make your own, from scratch? [Urbit By Doing](https://github.com/Fang-/Urbit-By-Doing) can teach you how!
 
@@ -9,9 +11,9 @@ Want to make your own, from scratch? [Urbit By Doing](https://github.com/Fang-/U
 When responding to a message, ~talkbot tries to use the message's audience. For complex audiences this does not yet work well. (It has a special case for the different urbit-meta channels, always sending replies to ~binzod/urbit-meta if the audience includes any official urbit-meta channel.)
 
 * Does various bits of chit-chat.
-* Welcomes users when they join a station. (Disabled in live version.)
 * Provides titles of Github repositories and issues/pull requests when linked.
 * Provides Pastebin paste titles (if they're titled).
+* Logs station activity.
 * Can perform functionality on command.
 
 ### Commands
@@ -21,7 +23,7 @@ When responding to a message, ~talkbot tries to use the message's audience. For 
 * `~myping` Measures round-time to caller by using `|hi`.
 * `~ignoreme` To have ~talkbot ignore your messages.
 * `~unignoreme` (or `~noticeme`) to make ~talkbot respond to your messages again.
-* `~whocount` Posts the amount of ships currently in the station.
+* `~whocount` Posts the amount of *active* ships currently in the station.
 * `~chopra` Posts a fake Deepak Chopra quote.
 
 ### Future features
