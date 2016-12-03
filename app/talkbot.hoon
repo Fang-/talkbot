@@ -380,6 +380,28 @@
         ~&  [%failed-epur-for turl]
         [~ ~]
       [[[ost %hiss /pb ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
+    =+  ^=  yt
+      ?^  (find "youtube.com/watch?" turl)  &
+      ?^  (find "youtu.be/" turl)  &
+      |
+    ?:  yt
+      =+  ^=  id
+        ?:  (lth (lent turl) 30)
+          (slag (sub (lent turl) 11) turl)
+        =+  i=(find "v=" turl)
+        ?~  i
+          ~
+        (scag 11 (slag (add u.i 2) turl))
+      =+  ^=  url
+        %-  epur
+        %-  crip
+        %+  weld
+          "https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyBTzehz6Fst7XC-YReqE5JqLwHczltS65Y&id="
+          id
+      ?~  url
+        ~&  [%failed-epur-for-yt]
+        [~ ~]
+      [[[ost %hiss /yt ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
     [~ ~]
   ==
 
@@ -396,6 +418,23 @@
   ~&  [%sigh-httr-log wir]
   ~&  body
   [~ +>.$]
+
+++  sigh-httr-yt
+  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
+  ^-  {(list move) _+>.$}
+  ?.  &((gte code 200) (lth code 300))
+    ~&  [%we-have-a-problem code]
+    ~&  [%headers headers]
+    ~&  [%body body]
+    [~ +>.$]
+  ?~  body
+    [~ +>.$]
+  =+  bt=(trip q.u.body)
+  ::  Poor man's parsing.
+  =+  tl=(slag (add (fall (find "\"title\":" bt) 0) 10) bt)
+  =+  title=(scag (fall (find "\",\0a" tl) 0) tl)  ::  "
+  :_  +>.$
+  [(send tmpstation title) ~]
 
 ++  sigh-httr
   |=  {wir/wire code/@ud headers/mess body/(unit octs)}
