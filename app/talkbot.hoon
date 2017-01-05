@@ -37,8 +37,6 @@
 |_  {bowl joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk}
 
 ++  poke-noun
-  ::TODO  Should probably check if %peers and %pulls succeed (using reap) before
-  ::      adding/removing stations to/from the joined list.
   |=  act/action
   ^-  {(list move) _+>.$}
   ?-  act
@@ -181,7 +179,7 @@
   ^-  (pair (list move) (unit update))
   =|  moves/(list move)
   =*  msg  r.r.q.gram
-  =+  aud=(get-audience-station-naive q.q.gram)
+  =+  aud=(get-audience-station-naive q.q.gram)  ::TODO fall back to wirstat if failed.
   ?^  (find [p.gram]~ ignoring)  ::  If we're ignoring a user, only acknowledge ~unignorme/~noticeme.
     ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
       [~ [~ [%unignore p.gram]]]
@@ -261,7 +259,7 @@
       ::  If someone greets us, greet them back by name.
       =+  ^=  greeted
         ::TODO  Matches on things like "the talkbot they built"
-        ?^  (find "hi " tmsg)  &  :: We don't want it to match on "something".
+        ?^  (find "hi " tmsg)  &  ::  We don't want it to match on "something".
         ?^  (find "yo " tmsg)  &
         ?^  (find "hey" tmsg)  &
         ?^  (find "hello" tmsg)  &
@@ -381,7 +379,7 @@
         [~ ~]
       [[[ost %hiss /gh/[kind] ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
     ?:  =((find "http://pastebin.com/" turl) [~ 0])
-      :: Pastebin doesn't provide API access to paste data (ie title), so just get the page.
+      ::  Pastebin doesn't provide API access to paste data (ie title), so just get the page.
       =+  url=(epur (crip turl))
       ?~  url
         ~&  [%failed-epur-for turl]
@@ -422,8 +420,7 @@
     [~ +>.$]
   ?~  body
     [~ +>.$]
-  ~&  [%sigh-httr-log wir]
-  ~&  body
+  ~&  [%unexpected-log-return body]
   [~ +>.$]
 
 ++  sigh-httr-yt
@@ -605,14 +602,14 @@
     :(weld (swag [0 7] name) "_" (swag [51 6] name))
   name
 
-++  random  :: Random number >=min, <max
+++  random  ::  Random number >=min, <max
   |=  {min/@ max/@}
   ^-  @
   =+  rng=~(. og eny)
   =^  r  rng  (rads:rng max)
   (add min r)
 
-++  chance  :: Has perc% chance of returning true.
+++  chance  ::  Has perc% chance of returning true.
   |=  perc/@
   ^-  ?
   (lth (random 0 101) perc)
