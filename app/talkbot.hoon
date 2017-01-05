@@ -336,7 +336,7 @@
       ::  Exclude urbit.org/stream comets.
       ?:  &(=((clan p.gram) %pawn) =((swag [51 6] (scow %p p.gram)) "binzod"))
         [[(send aud "You're a pseudo-comet, I can't ping you!") moves] ~]
-      [[[ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping'] moves] ~]
+      [[[ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %p p.gram)/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping'] moves] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
       =+  memcount=(fall (~(get by joined) aud) 0)
       =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
@@ -562,14 +562,14 @@
   |=  {wir/wire *}
   ^-  {(list move) _+>.$}
   :_  +>.$
-  ?.  ?=({@ta @ta @ta *} wir)
+  ?.  ?=({@ta @ta @ta @ta *} wir)
     ~&  [%incorrect-ping-wire wir]
     ~
   =+  stat=(station-from-wire wir)
   ?~  stat
     ~
-  =+  ping=(div (mul 1.000 (sub now `@da`(slav %da i.t.t.wir))) ~s1)
-  [(send u.stat (weld (scow %u ping) " ms (round-trip from me to you)")) ~]
+  =+  ping=(div (mul 1.000 (sub now `@da`(slav %da i.t.t.t.wir))) ~s1)
+  [(send u.stat :(weld (scow %u ping) " ms (round-trip from me to " (ship-shortname (slav %p i.t.t.wir)) ")")) ~]
 
 ++  station-from-wire
   |=  wir/wire
