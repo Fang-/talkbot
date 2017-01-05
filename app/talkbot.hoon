@@ -293,6 +293,8 @@
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
       ?:  (chance 10)
         [[(send aud "Yes, hello fellow human.") moves] ~]
+      ?:  (chance 5)  ::TODO  Is this too stupid?
+        [[(send aud :(weld "\"" (ship-firstname our) "\"? I am the one and only ~talkbot!")) moves] ~]
       [[(send aud "Call me ~talkbot, beep boop!") moves] ~]
     ?:  =("ping" tmsg)
       ?:  (chance 5)
@@ -306,6 +308,8 @@
       ?:  (chance 5)
         [[(send aud "Do not test me, human!") moves] ~]
       [[(send aud "Test successful!") moves] ~]
+    ?:  =("jumps over the lazy dogs" tmsg)
+      [[(send aud "*bark*") moves] ~]
     ?:  ?|  =("what is urbit?" tmsg)
             =("what's urbit?" tmsg)
             =("what is this?" tmsg)
@@ -324,6 +328,9 @@
             "I'd like to interject for a moment. What you're referring to "
         ==
       [[(send aud (snag (random 0 (lent resplist)) resplist)) moves] ~]
+    ::  If git gets mentioned, warn.
+    ?^  (find " git " tmsg)
+      [[(send aud "PSA: To install, download a release, don't clone the repo!") moves] ~]
     ::  COMMANDS
     ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
       [[(send aud "Measuring ping...") moves] ~]
