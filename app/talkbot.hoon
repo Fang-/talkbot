@@ -192,6 +192,10 @@
   =|  moves/(list move)
   =*  msg  r.r.q.gram
   =+  aud=(get-audience-station-naive q.q.gram)  ::TODO fall back to wirstat if failed.
+  ::  Ignore messages from stations we're not subscribed to.
+  ::TODO  This should not be able to happen. Maybe remove after ~marzod gets fixed.
+  ?.  (~(has by joined) aud)
+    [~ ~]
   ?^  (find [p.gram]~ ignoring)  ::  If we're ignoring a user, only acknowledge ~unignorme/~noticeme.
     ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
       [~ [~ [%unignore p.gram]]]
