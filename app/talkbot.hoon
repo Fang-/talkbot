@@ -18,6 +18,7 @@
       {$pull wire {@p term} $~}
       {$poke wire {@p term} poke-content}
       {$hiss wire $~ $httr {$purl p/purl}}
+      {$wait wire @da}
   ==
 ++  action
   $%  {$join s/station:talk}
@@ -26,6 +27,7 @@
       {$leaveall $~}
       {$joined $~}
       {$ignoring $~}
+      {$kick-poll $~}
   ==
 ++  update
   $%  {$tmpstation s/station:talk}
@@ -34,7 +36,7 @@
   ==
 --
 
-|_  {bowl joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk}
+|_  {bowl joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk last-release-url/tape}
 
 ++  poke-noun
   |=  act/action
@@ -80,6 +82,8 @@
   {$ignoring $~}
     ~&  [%ignoring ignoring]
     [~ +>.$]
+  {$kick-poll $~}
+    [[[ost %wait /poll-releases now] ~] +>.$]
   ==
 
 ++  diff-talk-report
@@ -423,6 +427,36 @@
   ~&  [%unexpected-log-return body]
   [~ +>.$]
 
+++  sigh-httr-poll-releases
+  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
+  ^-  {(list move) _+>.$}
+  =+  ^=  url
+    ?.  &((gte code 200) (lth code 300))
+      ~&  [%poll-releases-http code]
+      ~
+    ?~  body
+      ~&  %poll-releases-nobody
+      ~
+    =+  jon=(trip q.u.body)
+    ::  We just naively assume the GitHub API always puts the latest release
+    ::  on top, consistently.
+    ::TODO  Actual parsing etc. Be less lazy.
+    =+  idi=(find "\"html_url\":" jon)
+    ?~  idi  ~
+    =+  comi=(find "," (slag u.idi jon))
+    ?~  comi  ~
+    (swag [(add u.idi 12) (sub u.comi 13)] jon)
+  :-
+  ::  Whatever happens, we want to poll again in a bit.
+  :-  [ost %wait /poll-releases (add ~m30 now)]  ::TODO s
+    ?~  url  ~
+    ?~  last-release-url  ~  ::  Skip if we don't have a point of reference.
+    ?:  =(url last-release-url)  ~
+    :_  ~
+    (send [~binzod ~.urbit-meta] (weld "new urbit: " url))
+  ?~  url  +>.$
+  +>.$(last-release-url url)
+
 ++  sigh-httr-yt
   |=  {wir/wire code/@ud headers/mess body/(unit octs)}
   ^-  {(list move) _+>.$}
@@ -507,6 +541,12 @@
     [[(send tmpstation tbody) ~] +>.$]
   ~&  [%unknown-service wir]
   [~ +>.$]
+
+++  wake-poll-releases
+  |=  {wir/wire $~}
+  ^-  (quip move +>)
+  :_  +>.$
+  [ost %hiss /poll-releases ~ %httr %purl (need (epur 'https://api.github.com/repos/urbit/urbit/releases'))]~
 
 ++  get-audience-station-naive
   |=  aud/audience:talk
