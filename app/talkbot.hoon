@@ -517,22 +517,6 @@
       [[(send tmpstation :(weld (trip full-name.rep) ": " (trip description.rep))) ~] +>.$]
     ~&  [%gh-unknown-wire wir]
     [~ +>.$]
-      [~ +>.$]
-    =+  ^=  info  ^-  tape
-      =+  desc=(fall (~(get by p.u.json) 'description') ~)
-      =+  title=(fall (~(get by p.u.json) 'title') ~)
-      ?:  ?=({$s *} desc)  (trip p.desc)
-      ?:  ?=({$s *} title)  (trip p.title)
-      ~
-    ?~  info  ::  If we can't say anything informative, just don't speak.
-      [~ +>.$]
-    =+  ^=  repo  ^-  tape
-      =+  fullname=(fall (~(get by p.u.json) 'full_name') ~)
-      =+  repourl=(fall (~(get by p.u.json) 'repository_url') ~)
-      ?:  ?=({$s *} fullname)  (trip p.fullname)
-      ?:  ?=({$s *} repourl)  (swag [29 20] (trip p.repourl))
-      "GitHub"
-    [[(send tmpstation :(weld repo ": " info)) ~] +>.$]
   ?:  =(i.wir %pb)
     =+  tbody=(trip q.u.body)
     =+  openi=(fall (find "<h1>" tbody) ~)
