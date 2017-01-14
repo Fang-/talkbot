@@ -42,9 +42,10 @@
 ++  prep
   ::  This is actually a unit, so we're being lazy about first boot here.
   ::  Ideally, initial boot should kick periodicals into gear.
-  |=  {$~ joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk last-release-url/tape}
+  |=  s/(unit {joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk last-release-url/tape})
   ^-  (quip move ..prep)
-  [~ ..prep(joined joined, ignoring ignoring, tmpstation tmpstation, last-release-url last-release-url)]
+  ?~  s  [~ ..prep]
+  [~ ..prep(joined joined.u.s, ignoring ignoring.u.s, tmpstation tmpstation.u.s, last-release-url last-release-url.u.s)]
 
 ++  poke-noun
   |=  act/action
