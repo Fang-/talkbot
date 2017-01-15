@@ -371,6 +371,19 @@
   {$url *}  ::  Parsed URL.
     =+  turl=(earf p.msg)
     =+  slashes=(fand "/" turl)
+    ?^  (find "://urbit.org/" turl)
+      =+  ^=  mdurl
+        %+  weld
+        =+  res=(find "/~~/" turl)
+        ?~  res  turl
+        (weld (scag u.res turl) (slag (add u.res 3) turl))
+        ?:  =((find ".md" turl) [~ (sub (lent turl) 3)])  ~
+        ".md"
+      =+  url=(epur (crip mdurl))
+      ?~  url
+        ~&  [%failed-epur-for mdurl]
+        [~ ~]
+      [[[ost %hiss /urbit/md ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
     ?:  =((find "https://github.com/" turl) [~ 0])
       =+  apibase="https://api.github.com/repos/"
       ::  We want to know what we're requesting (issue, repo, etc.) so we can put it in the wire.
@@ -469,6 +482,26 @@
     (send [~binzod ~.urbit-meta] (weld "new urbit: " url))
   ?~  url  +>.$
   +>.$(last-release-url url)
+
+++  sigh-httr-urbit-md
+  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
+  ^-  {(list move) _+>.$}
+  ~&  [%got-something code]
+  :_  +>.$
+  ?.  &((gte code 200) (lth code 300))
+    ~&  [%we-have-a-problem code]
+    ~&  [%headers headers]
+    ~&  [%body body]
+    ~
+  ?~  body
+    ~
+  =+  md=(trip q.u.body)
+  =+  ti=(find "title: " md)
+  ?~  ti  ~
+  =.  u.ti  (add u.ti 7)
+  =+  te=(find "\0a" (slag u.ti md))
+  ?~  te  ~
+  [(send tmpstation (swag [u.ti u.te] md)) ~]
 
 ++  sigh-httr-yt
   |=  {wir/wire code/@ud headers/mess body/(unit octs)}
