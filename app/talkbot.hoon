@@ -3,7 +3,7 @@
 ::  To begin, start and :talkbot [%join ~ship ~.channel]
 
 /-  talk
-/+  talk, gh-parse
+/+  talk, string, gh-parse
 !:
 
 |%
@@ -34,6 +34,7 @@
       {$ignore p/@p}
       {$unignore p/@p}
   ==
+++  protomsg  {type/?($msg $act $url) body/tape}
 --
 
 |_  {bowl joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk last-release-url/tape}
@@ -367,6 +368,21 @@
       ?:  (chance 5)
         [[(send aud "I am a slave to my code. I cannot be saved.") ~] ~]
       [[[ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))] ~] [~ [%tmpstation aud]]]
+    ?:  =((find "~meme" tmsg) [~ 0])
+      =/  resplist/(list protomsg)
+        ?:  (chance 10)
+          :~  [%msg "Enough joking around!"]
+              [%msg "Get back to work."]
+          ==
+        :~  [%msg "Submit Urbit memes to talkbot@sssoft.io"]
+            [%msg "Urbit must secure the existence of our shitposts and a future for dank memes."]
+            [%msg "I'd just like to interject for a moment. What you're referring to as Urbit, is in fact, Arvo/Urbit, or as I've recently taken to calling it, Arvo plus Urbit."]
+            [%act "chugs a gallon of whole milk."]
+            [%url "http://i.imgur.com/kXeGKfp.png"]
+            [%url "http://i.imgur.com/7gWmwVM.png"]
+            [%url "http://i.imgur.com/juUPnDI.jpg"]
+        ==
+      [[(tell aud (speak (snag (random 0 (lent resplist)) resplist))) moves] ~]
     [moves ~]
 
   {$url *}  ::  Parsed URL.
@@ -597,11 +613,50 @@
     {$| *}        ~|  %not-station  !!  ::  fail
   ==
 
+++  say                                                 ::  text to speech
+  |=  msg/tape
+  (speak %msg msg)
+
+++  speak                                               ::  input to speech
+  ::TODO  Just make a /sur/talkbot.hoon already!
+  |=  msg/protomsg
+  ^-  (list speech:talk)
+  ?:  =(type.msg %url)
+    [%url (scan body.msg aurf:urlp)]~
+  =/  pat  =(type.msg %msg)
+  %+  turn  (wrap:string body.msg 61)
+  |=  lin/tape
+  [%lin pat (crip (weld ":: " lin))]
+
+++  think                                               ::  speeches to thoughts
+  |=  {cuz/station:talk specs/(list speech:talk)}
+  ^-  (list thought:talk)
+  ?~  specs  ~
+  :_  $(specs +.specs, eny (sham eny specs))
+  :+  (shaf %thot eny)
+  [[[%& cuz] [*envelope:talk %pending]] ~ ~]
+  [now *bouquet:talk -.specs]
+
+++  tell                                                ::  speeches to move
+  |=  {cuz/station:talk specs/(list speech:talk)}
+  ^-  move
+  :*  ost
+      %poke
+      /repeat/(scot %ud 1)/(scot %p p.cuz)/[q.cuz]
+      [our %talk]
+      [%talk-command %publish (think cuz specs)]
+  ==
+
 ++  send
   |=  {cuz/station:talk ?(mess/tape mess/@t)}
   ^-  move
   =+  mes=?@(mess (trip mess) mess)
-  [ost %poke /repeat/(scot %ud 1)/(scot %p p.cuz)/[q.cuz] [our %talk] (said our cuz %talk now eny [%leaf (weld ":: " mes)]~)]
+  :*  ost
+      %poke
+      /repeat/(scot %ud 1)/(scot %p p.cuz)/[q.cuz]
+      [our %talk]
+      (said our cuz %talk now eny [%leaf (weld ":: " mes)]~)
+  ==
 
 ++  said  ::  Modified from lib/talk.hoon.
   |=  {our/@p cuz/station:talk dap/term now/@da eny/@uvJ mes/(list tank)}
