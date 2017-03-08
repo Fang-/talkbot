@@ -193,10 +193,6 @@
   =|  moves/(list move)
   =*  msg  r.r.q.gram
   =+  aud=(get-audience-station-naive q.q.gram)  ::TODO fall back to wirstat if failed.
-  ::  Ignore messages from stations we're not subscribed to.
-  ::TODO  This should not be able to happen. Maybe remove after ~marzod gets fixed.
-  ?.  (~(has by joined) aud)
-    [~ ~]
   ?^  (find [p.gram]~ ignoring)  ::  If we're ignoring a user, only acknowledge ~unignorme/~noticeme.
     ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
       [~ [~ [%unignore p.gram]]]
@@ -308,8 +304,6 @@
     ?^  (find (swag [0 7] (scow %p our)) tmsg)
       ?:  (chance 10)
         [[(send aud "Yes, hello fellow human.") moves] ~]
-      ?:  (chance 5)  ::TODO  Is this too stupid?
-        [[(send aud :(weld "\"" (ship-firstname our) "\"? I am the one and only ~talkbot!")) moves] ~]
       [[(send aud "Call me ~talkbot, beep boop!") moves] ~]
     ?:  =("ping" tmsg)
       ?:  (chance 5)
@@ -351,7 +345,7 @@
       [[(send aud "Measuring ping...") moves] ~]
     ?:  |(=((find "~ping" tmsg) [~ 0]) =((find "~myping" tmsg) [~ 0]) =((find "~pingme" tmsg) [~ 0]))
       ::  Exclude urbit.org/stream comets.
-      ?:  &(=((clan p.gram) %pawn) =((swag [51 6] (scow %p p.gram)) "binzod"))
+      ?:  &(=((clan p.gram) %pawn) =((swag [51 6] (scow %p p.gram)) "marzod"))
         [[(send aud "You're a pseudo-comet, I can't ping you!") moves] ~]
       [[[ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %p p.gram)/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping'] moves] ~]
     ?:  =((find "~whocount" tmsg) [~ 0])
