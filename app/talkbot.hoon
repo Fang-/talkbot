@@ -234,6 +234,8 @@
     ?^  (find "pongbot" tmsg)
       [[(send aud "Ping-pong isn't all I can do!") moves] ~]
     ?^  (find "talkbot" tmsg)
+      ?^  (find "cute" tmsg)
+        [[(send aud "no, u ;)") moves] ~]
       =+  ^=  source
         ?^  (find " code" tmsg)  &  ::  Prevent "encode" etc.
         ?^  (find " repo" tmsg)  &  ::  Prevent "preponderance" etc.
@@ -314,9 +316,9 @@
         [[(send aud "[robot noises]") moves] ~]
       [[(send aud "Boop.") moves] ~]
     ?:  |(=("test" tmsg) =("testing" tmsg))
-      ?:  (chance 5)
-        [[(send aud "Do not test me, human!") moves] ~]
       [[(send aud "Test successful!") moves] ~]
+    ?:  =("hello world" tmsg)
+      [[(send aud "Hello!") moves] ~]
     ?:  =("jumps over the lazy dogs" tmsg)
       [[(send aud "*bark*") moves] ~]
     ?:  ?|  =("what is urbit?" tmsg)
@@ -332,14 +334,19 @@
             "Urbit is to real estate as Bitcoin is to currency."
             "Urbit is the future."
             "Urbit is definitely not a scamcoin."
+            "Urbit: project, function, server, network, possibility."
             "What is Urbit not?"
             "You tell me."
             "I'd like to interject for a moment. What you're referring to "
+            "Crazy."
         ==
       [[(send aud (snag (random 0 (lent resplist)) resplist)) moves] ~]
     ::  If git gets mentioned, warn.
     ?^  (find " git " tmsg)
       [[(send aud "PSA: To install, download a release, don't clone the repo!") moves] ~]
+    ::  If %mo-not-running gets mentioned, warn.
+    ?^  (find "not-running" tmsg)
+      [[(send aud "PSA: When doing urbytes, just boot with `urbit -c mycomet`!") moves] ~]
     ::  COMMANDS
     ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
       [[(send aud "Measuring ping...") moves] ~]
