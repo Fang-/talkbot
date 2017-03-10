@@ -440,10 +440,9 @@
       =+  ^=  id
         ?:  (lth (lent turl) 30)
           (slag (sub (lent turl) 11) turl)
-        =+  i=(find "v=" turl)
-        ?~  i
-          ~
-        (scag 11 (slag (add u.i 2) turl))
+        =+  i=(find-any:string turl ["v=" "e/" ~])
+        ?~  i  ~
+        (scag 11 (slag (add i.u.i 2) turl))
       =+  ^=  url
         %-  epur
         %-  crip
