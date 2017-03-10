@@ -1,6 +1,7 @@
 # ~Talkbot
 
-Urbit's first ever talkbot. Say hello to `~talkbot` in chat! It tries to be useful, but doesn't do the dishes.
+Urbit's first ever talkbot. Say hello to `~talkbot` in chat! It tries to be useful, but doesn't do the dishes.  
+It relies on the unofficial [stringlib](https://github.com/fang-/urbit-string).
 
 **The current code is not reference quality**. A cleanup of this mess is planned, but there's no ETA.
 
