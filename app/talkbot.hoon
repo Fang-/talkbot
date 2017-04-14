@@ -696,6 +696,21 @@
   =+  ping=(div (mul 1.000 (sub now `@da`(slav %da i.t.t.t.wir))) ~s1)
   [(send u.stat :(weld (scow %u ping) " ms (round-trip from me to " (ship-shortname (slav %p i.t.t.wir)) ")")) ~]
 
+++  quit
+  |=  wir/wire
+  ^-  {(list move) _+>}
+  ?.  ?=({@tas @tas $~} wir)
+    [~ +>]
+  ~&  [%re-subbing wir]
+  :_  +>
+  :_  ~
+  :*  ost
+      %peer
+      wir
+      [(slav %p i.wir) %talk]
+      /afx/[i.t.wir]/(scot %da now)
+  ==
+
 ++  station-from-wire
   |=  wir/wire
   ^-  (unit station:talk)
