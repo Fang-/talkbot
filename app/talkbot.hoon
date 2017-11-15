@@ -1,757 +1,1041 @@
-::  Bot for urbit talk.
-::  Responds when talked to, provides titles of GitHub issues and PRs when linked.
-::  To begin, start and :talkbot [%join ~ship ~.channel]
-
-/-  talk
-/+  talk, string, gh-parse
+::
+::  /app/talkbot/hoon
+::
+::TODO's and ideas:
+::  -  try finding more metadata for %webpage assists. description?
+::  -  give descriptions for runes and stdlib functions when asked.
+::  -  keep track of last-msg-time, scnd-last-msg-time, and if the current
+::      message is a "hello?" or similar, send an automated welcoming message if
+::      nobody else replies within two minutes.
+::  -  watch urbit repos for prs and issues, and post about them in urbit-meta.
+::  -  have it tip someone (random 13 25) dogecoin whenever they "praise ~zod",
+::      effectively paying them to turn us into a cult. -- 2018 business model
+::  -  have it say "praise ~zod" every time something good happens (ie someone
+::      says "hurray" or "problem solved!"). to make this work best, include a
+::      hella long list of specific triggers, and vary between using ! and .
+::      for punctuation.
+::  -  "talkbot, listen", followed by a statement makes talkbot remember it.
+::      ie "urbit is fun" makes it remember that phrase for urbit definitions.
+::  -  actually port !chopra to hoon
+::  -  quote generators (like !chopra) for !moldbug, !chomsky, !plato
+::  -  keep map of birthdays, congratulating that person the first time they
+::      send a message on that date.
+::  -  (map cord @ud)  "+1 for ..." increments ... in map.
+::  -  if message includes "(but) don't quote me on (this|that)", add to quotes
+::      and quote immediately
+::
+/-  hall, gh
+/+  hall
 !:
-
-|%
-++  move  {bone card}
-++  poke-content
-  $%  {$noun action}
-      {$helm-hi cord}
-      {$talk-command command:talk}
-  ==
-++  card
-  $%  {$peer wire {@p term} path}
-      {$pull wire {@p term} $~}
-      {$poke wire {@p term} poke-content}
-      {$hiss wire $~ $httr {$purl p/purl}}
-      {$wait wire @da}
-  ==
-++  action
-  $%  {$join s/station:talk}
-      {$leave s/station:talk}
-      {$joinfaves $~}
-      {$leaveall $~}
-      {$joined $~}
-      {$ignoring $~}
-      {$kick-poll $~}
-  ==
-++  update
-  $%  {$tmpstation s/station:talk}
-      {$ignore p/@p}
-      {$unignore p/@p}
-  ==
-++  protomsg  {type/?($msg $act $url) body/tape}
---
-
-|_  {bowl joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk last-release-url/tape}
-
-::  State adapter. When modifying state mold, this carries data over.
-++  prep
-  ::  This is actually a unit, so we're being lazy about first boot here.
-  ::  Ideally, initial boot should kick periodicals into gear.
-  |=  s/(unit {joined/(map station:talk @) ignoring/(list @p) tmpstation/station:talk last-release-url/tape})
-  ^-  (quip move ..prep)
-  ?~  s  [~ ..prep]
-  [~ ..prep(joined joined.u.s, ignoring ignoring.u.s, tmpstation tmpstation.u.s, last-release-url last-release-url.u.s)]
-
-++  poke-noun
-  |=  act/action
-  ^-  {(list move) _+>.$}
-  ?-  act
-  {$join *}
-    ?:  (~(has by joined) s.act)
-      ~&  [%already-joined s.act]
-      [~ +>.$]
-    ~&  [%joining s.act]
-    :-  [[ost %peer /(scot %p p.s.act)/[q.s.act] [p.s.act %talk] /afx/[q.s.act]/(scot %da now)] ~]
-    +>.$
-  {$leave *}
-    ?.  (~(has by joined) s.act)
-      ~&  [%already-left s.act]
-      [~ +>.$]
-    ~&  [%leaving s.act]
-    :-  [[ost %pull /(scot %p p.s.act)/[q.s.act] [p.s.act %talk] ~] ~]
-    +>.$(joined (~(del by joined) s.act))
-  {$joinfaves $~}
-    =+  ^=  favs  ^-  (list station:talk)  :~
-      [~palfun-foslup ~.sandbox]
-      [~binzod ~.urbit-meta]
-    ==
-    :_  +>.$
-    %+  murn  favs
-      |=  f/station:talk
-      ^-  (unit move)
-      ::  Just poke our app for the %join call.
-      [~ [ost %poke /poking [our dap] %noun [%join f]]]
-  {$leaveall $~}
-    ~&  [%leaving-all]
-    :_  +>.$(joined ~)
-    %+  turn  (~(tap by joined))
-      |=  j/(pair station:talk *)
-      [ost %pull /(scot %p p.p.j)/[q.p.j] [p.p.j %talk] ~]
-  {$joined $~}
-    ~&  :-  %currently-joined
-      %+  turn  (~(tap by joined))
-        |=  a/(pair station:talk *)
-        p.a
-    [~ +>.$]
-  {$ignoring $~}
-    ~&  [%ignoring ignoring]
-    [~ +>.$]
-  {$kick-poll $~}
-    [[[ost %wait /poll-releases now] ~] +>.$]
-  ==
-
-++  diff-talk-report
-  |=  {wir/wire rep/report:talk}
-  ^-  {(list move) _+>.$}
-
-  ::  First, do a check to see if we intend to be subscribed to this station.
-  ::  (There is some weirdness with subscriptions, this should notice and delete unwanted ones.)
-  =+  wirstat=(fall (station-from-wire wir) ~)
-  ::  If the wire can't be parsed into a station, jump out. This shouldn't happen?
-  ?~  wirstat
-    ~&  [%unparsable-wire-station wir]
-    [~ +>.$]
-  ::  Verify we know the station we deduced from the wire.
-  ?.  (~(has by joined) wirstat)
-    ~&  [%unknown-wire-station wirstat]
-    ~&  [%leaving wirstat]
-    [[[ost %pull wir [p.wirstat %talk] ~] ~] +>.$]
-
-  ::  Default talk report: Do nothing.
-  ?+  rep
-    ~&  [%report rep]
-    [~ +>.$]
-
-  ::  Message list.
-  {$grams *}
-    =+  i=(lent q.rep)
-    =|  moves/(list move)
-    |-  ^-  {(list move) _+>.^$}
-    ?.  (gth i 0)
-      [moves +>.^$]
-    =.  i  (sub i 1)
-    =+  gram=(snag i q.rep)
-    =+  res=(read-telegram gram)  ::  (pair (list move) (unit update))
-    =.  moves  (weld p.res moves)
-    =+  upd=(fall q.res ~)
-    =+  ^=  updres  ^-  (pair (unit move) (unit {s/station:talk i/(list @p)}))
-      ?-  upd
-      {$tmpstation *}
-        [~ [~ [s=s.upd i=ignoring]]]
-      {$ignore *}
-        ?^  (find [p.upd]~ ignoring)  [~ ~]
-        :_  [~ [s=tmpstation i=[p.upd ignoring]]]
-        [~ (send (get-audience-station-naive q.q.gram) :(weld "Now ignoring " (ship-shortname p.upd) ", use ~unignoreme to undo."))]
-      {$unignore *}
-        =+  i=(find [p.upd]~ ignoring)
-        ?~  i  [~ ~]
-        =+  nign=(weld (scag u.i ignoring) (slag +(u.i) ignoring))
-        :_  [~ [s=tmpstation i=nign]]
-        [~ (send (get-audience-station-naive q.q.gram) (weld "No longer ignoring " (ship-shortname p.upd)))]
-      {$~}  [~ ~]
+::
+[. hall]
+=>  ::>  ||
+    ::>  ||  %arch
+    ::>  ||
+    ::
+    |%
+    ++  state                                           ::<  full app state
+      $:  streams/(map circle stream)                   ::<  what we follow
+          known/(map serial (pair circle @ud))          ::<  all known messages
+          ignoring/(set ship)                           ::<  shy people
+          latest/(map term *)                           ::<  for polling
+          simples/(map term tape)                       ::<  static replies
+      ==                                                ::
+    ++  stream                                          ::<  stream state
+      $:  grams/(list telegram)                         ::<  words
+          count/@ud                                     ::<  (lent grams)
+          ::  [3 2 1 ~] , 3
+          ::  (sub count +(i))
+          people/(map ship person)                      ::<  people + msgs
+          behavior/role                                 ::<  how to act
+      ==                                                ::
+    ++  person                                          ::<  per-person data
+      $:  messages/(list @ud)                           ::<  stream msgs
+          ::  in order to prevent abuse, we give more   ::
+          ::  active triggerers longer cooldowns.       ::
+          ::  for every message we react to, a ship's   ::
+          ::  heat gets doubled. for every five seconds ::
+          ::  that pass, one heat point is lost.        ::
+          ::  when a message is sent, we round down in  ::
+          ::  our calculation of remaining heat.        ::
+          heat/@ud                                      ::<  activity score
+          last/@da                                      ::<  time of last msg
+      ==                                                ::
+    ::                                                  ::
+    ++  role  ?($full $polite)                          ::<  behavior
+    ::                                                  ::
+    ++  control                                         ::<  user control
+      $%  {$join cir/circle rol/role}                   ::
+          {$leave cir/circle}                           ::
+          {$test $~}                                    ::
+      ==                                                ::
+    ::                                                  ::
+    ++  move  (pair bone card)                          ::
+    ++  card                                            ::
+      $%  {$peer wire dock path}                        ::
+          {$pull wire dock $~}                          ::
+          {$poke wire dock pear}                        ::
+          $:  $hiss                                     ::
+              wire                                      ::
+              (unit user:eyre)                          ::
+              mark                                      ::
+              {$purl purl:eyre}                         ::
+          ==                                            ::
+      ==                                                ::
+    ++  pear                                            ::
+      $%  {$hall-action action}                         ::
+          {$helm-hi cord}                               ::
+      ==                                                ::
+    ::                                                  ::
+    ++  delta                                           ::
+      $%  ::  state changes
+          {$join cir/circle rol/role}
+          {$learn cir/circle gam/telegram}
+          {$ignore who/ship ign/?}
+          ::  side-effects
+          {$sub sub/? cir/circle}
+          {$say cir/circle gam/telegram res/(list reply)}
       ==
-    =.  moves  ?~(p.updres moves [u.p.updres moves])  ::  If we got a move, add it.
-    ?:  =(i 0)
-      ?~  q.updres
-        [moves +>.^$]
-      [moves +>.^$(tmpstation s.u.q.updres, ignoring i.u.q.updres)]
-    ?~  q.updres
-      $
-    $(tmpstation s.u.q.updres, ignoring i.u.q.updres)
-
-  ::  Users in station.
-  {$group *}
-    ::  We're going to count the amount of active members in this station and
-    ::  compare it to our last known value.
-    ::  Since $group reports don't contain the station it came from, we have to
-    ::  use the wire-deduced station.
-    =+  oldcount=(fall (~(get by joined) wirstat) 0)
-    ::  Only count active members. (%hear and %talk, not %gone)
-    =+  ^=  newcount
-      %-  lent
-      %+  skip
-        ~(val by p.rep)
-        |=  status/status:talk
-        =(p.status %gone)
-    :_  +>.$(joined (~(put by joined) wirstat newcount))
-    ?:  =(newcount oldcount)
-      ~
-    ::  Log new memcount to logging server.
-    =+  ^=  url
-    ;:  weld
-      "https://403.fang.io/talkbot/memcount.php"
-      "?stationship="  (scow %p p.wirstat)
-      "&stationchannel="  (trip q.wirstat)
-      "&memcount="  (scow %ud newcount)
-    ==
-    [[ost %hiss /log/memcount ~ %httr %purl (need (epur (crip url)))] ~]
-
-  {$cabal *}  ::  Channel info.
-    ~&  [%got-cabal rep]
-    [~ +>.$]
-
-  ==
-
-++  read-telegram
-  |=  gram/telegram:talk
-  ^-  (pair (list move) (unit update))
-  =|  moves/(list move)
-  =*  msg  r.r.q.gram
-  =+  aud=(get-audience-station-naive q.q.gram)  ::TODO fall back to wirstat if failed.
-  ?^  (find [p.gram]~ ignoring)  ::  If we're ignoring a user, only acknowledge ~unignorme/~noticeme.
-    ?:  &(?=({$lin *} msg) |(=((find "~unignoreme" (trip q.msg)) [~ 0]) =((find "~noticeme" (trip q.msg)) [~ 0])))
-      [~ [~ [%unignore p.gram]]]
-    [~ ~]
-  =+  ^=  lmsg
-    ?:  ?=({$lin *} msg)
-      (trip q.msg)
-    ?:  ?=({$url *} msg)
-      (earf p.msg)
-    "::  unsupported message content  ::"
-  ::  First and foremost, make a move to log the message.
-  =+  ^=  logurl
-    ;:  weld
-      ::"https://403.fang.io/talkbot/message.php"
-      "http://localhost:9080/path/without/host"
-      "?message="  (urle lmsg)
-      "&sender="  (scow %p p.gram)
-      "&stationship="  (scow %p p.aud)
-      "&stationchannel="  (trip q.aud)
-      "&timestamp="  (scow %da p.r.q.gram)
-    ==
-  ::TODO renable when url encode bug gets fixed 772 784
-  ::~&  [%crip (crip logurl)]
-  ::~&  [%epur (epur (crip logurl))]
-  ::=.  moves  [[ost %hiss /log/message ~ %httr %purl (need (epur (crip logurl)))] moves]
-  ::  Then, start processing it.
-  ?+  msg
-    [~ ~]
-  {$lin *}  ::  Regular message.
-    =+  tmsg=(trip q.msg)
-    ?:  =(p.gram our)  ::  We may be interested in our own messages.
-      ?:  =(":: measuring ping..." tmsg)
-        =+  ping=(div (mul 1.000 (sub now p.r.q.gram)) ~s1)
-        [[(send aud :(weld (scow %u ping) " ms (talk round-trip from me to " (scow %p p.aud) "/" (trip q.aud) ")")) moves] ~]
-      [moves ~]
-    ?:  =((find "::" tmsg) [~ 0])  ::  Ignore other bot's messages.
-      [moves ~]
-    ::  React when we are talked about.
-    ?^  (find "pongbot" tmsg)
-      [[(send aud "Ping-pong isn't all I can do!") moves] ~]
-    ?^  (find "talkbot" tmsg)
-      ?^  (find "cute" tmsg)
-        [[(send aud "no, u ;)") moves] ~]
-      =+  ^=  source
-        ?^  (find " code" tmsg)  &  ::  Prevent "encode" etc.
-        ?^  (find " repo" tmsg)  &  ::  Prevent "preponderance" etc.
-        ?^  (find "source" tmsg)  &
-        |
-      =+  qmark=(find "?" tmsg)
-      ?^  qmark
-        ?:  source
-          [[(send aud "https://github.com/Fang-/talkbot") moves] ~]
-        =+  tbc=(find "talkbot" tmsg)
-        ?:  &(|(=(tbc [~ 0]) =(tbc [~ 1])) =(qmark [~ (sub (lent tmsg) 1)]))
-          =+  ^=  resplist  ^-  (list tape)                                   ::
-            :~  "It is certain."
-                "It is decidedly so."
-                "Without a doubt."
-                "Yes, definitely."
-                "You may rely on it."
-                "As I see it, yes."
-                "Most likely."
-                "Outlook good."
-                "Yes."
-                "Signs point to yes."
-                "Reply hazy try again."
-                "Ask again later."
-                "Better not tell you now."
-                "Cannot predict now."
-                "Concentrate and ask again."
-                "Don't count on it."
-                "My reply is no."
-                "My sources say no."
-                "Outlook not so good."
-                "Very doubtful."
+    ++  reply  ?(speech-reply move-reply)
+    ++  speech-reply
+      $%  {$simple wat/term}
+          {$speech sep/speech}
+          {$ignore ign/?}
+          {$milestone num/@ud}
+          {$hey $~}
+          {$bye $~}
+          {$bark $~}
+          {$urbit $~}
+          {$source $~}
+          {$oracle $~}
+          {$uifail $~}
+          [$quote $~]
+          {$meme $~}
+      ==
+    ++  move-reply
+      $%  {$ping $~}
+          {$chopra $~}
+          {$github own/cord rep/cord wat/request-github}
+          {$youtube wat/cord}
+          {$pastebin wat/cord}
+          {$webpage ret/?}
+      ==
+    ++  request-github
+      $%  {$repo $~}
+          {$issue num/cord}
+          {$commit has/cord}
+      ==
+    ++  weir
+      $%  {$ping uid/serial wen/@da}
+          {$github uid/serial own/cord rep/cord}
+          {$other uid/serial}
+      ==
+    --
+::
+::>  ||
+::>  ||  %work
+::>  ||
+::>    functional cores and arms
+::
+|_  {bol/bowl:gall state}
+::
+++  prep
+  ::>  adapts state.
+  ::
+  |=  old/(unit state)
+  ^-  (quip move _..prep)
+  :-  ~
+  ?~  old
+    ..prep(simples get-simples)
+  ..prep(+<+ u.old(simples get-simples))
+::
+++  poke-noun
+  |=  con/control
+  ^-  (quip move _+>)
+  ?-  -.con
+    $join   %-  pre-bake
+            :~  [%join cir.con rol.con]
+                [%sub & cir.con]
             ==
-          [[(send aud (snag (random 0 (lent resplist)) resplist)) moves] ~]
-        [moves ~]
-      ::  If someone greets us, greet them back by name.
-      =+  ^=  greeted
-        ::TODO  Matches on things like "the talkbot they built"
-        ?^  (find "hi " tmsg)  &  ::  We don't want it to match on "something".
-        ?^  (find "yo " tmsg)  &
-        ?^  (find "hey" tmsg)  &
-        ?^  (find "hello" tmsg)  &
-        ?^  (find "greetings" tmsg)  &
-        ?^  (find "salve" tmsg)  &
-        |
-      ?:  greeted
-        [[(send aud :(weld "Hello " (ship-firstname p.gram) "!")) moves] ~]
-      =+  ^=  farewell
-        ?^  (find "good night" tmsg)  &
-        ?^  (find "bye" tmsg)  &
-        ?^  (find "adios" tmsg)  &
-        |
-      ?:  farewell
-        [[(send aud :(weld "Bye, " (ship-firstname p.gram) "!")) moves] ~]
-      ::  If we're thanked, respond.
-      =+  ^=  praised
-        ?^  (find "thank" tmsg)  &
-        ?^  (find "good job" tmsg)  &
-        ?^  (find "gj" tmsg)  &
-        |
-      ?:  praised
-        [[(send aud "You're welcome!") moves] ~]
-      ::  If we're told to shut up, tell them about ~ignoreme.
-      ?^  (find "shut up" tmsg)
-        [[(send aud "Want me to ignore you? Send `~ignoreme`.") moves] ~]
-      [moves ~]
-    ::  If our ship name is mentioned, inform that we are a bot.
-    ?^  (find (swag [0 7] (scow %p our)) tmsg)
-      ?:  (chance 10)
-        [[(send aud "Yes, hello fellow human.") moves] ~]
-      [[(send aud "Call me ~talkbot, beep boop!") moves] ~]
-    ?:  =("ping" tmsg)
-      ?:  (chance 5)
-        [[(send aud "[ping-pong intensifies]") moves] ~]
-      [[(send aud "Pong.") moves] ~]
-    ?:  =("beep" tmsg)
-      ?:  (chance 5)
-        [[(send aud "[robot noises]") moves] ~]
-      [[(send aud "Boop.") moves] ~]
-    ?:  |(=("test" tmsg) =("testing" tmsg))
-      [[(send aud "Test successful!") moves] ~]
-    ?:  =("hello world" tmsg)
-      [[(send aud "Hello!") moves] ~]
-    ?:  =("jumps over the lazy dogs" tmsg)
-      [[(send aud "*bark*") moves] ~]
-    ?:  ?|  =("what is urbit?" tmsg)
-            =("what's urbit?" tmsg)
-            =("what is this?" tmsg)
-            =("what's this?" tmsg)
-        ==
-      =+  ^=  resplist  ^-  (list tape)                                   ::
-        :~  "Urbit is a p2p network of personal servers."
-            "Urbit is an os with shared global state."
-            "An Urbit is a cryptographic personal identity."
-            "Urbit is a self-proclaimed virtual city in the cloud."
-            "Urbit is to real estate as Bitcoin is to currency."
-            "Urbit is the future."
-            "Urbit is definitely not a scamcoin."
-            "Urbit: project, function, server, network, possibility."
-            "What is Urbit not?"
-            "You tell me."
-            "I'd like to interject for a moment. What you're referring to "
-            "Crazy."
-        ==
-      [[(send aud (snag (random 0 (lent resplist)) resplist)) moves] ~]
-    ::  If git gets mentioned, warn.
-    ?^  (find " git " tmsg)
-      [[(send aud "PSA: To install, download a release, don't clone the repo!") moves] ~]
-    ::  If %mo-not-running gets mentioned, warn.
-    ?^  (find "not-running" tmsg)
-      [[(send aud "PSA: When doing urbytes, just boot with `urbit -c mycomet`!") moves] ~]
-    ::  COMMANDS
-    ?:  |(=((find "~talkping" tmsg) [~ 0]) =((find "~pingtalk" tmsg) [~ 0]))
-      [[(send aud "Measuring ping...") moves] ~]
-    ?:  |(=((find "~ping" tmsg) [~ 0]) =((find "~myping" tmsg) [~ 0]) =((find "~pingme" tmsg) [~ 0]))
-      ::  Exclude urbit.org/stream comets.
-      ?:  &(=((clan p.gram) %pawn) =((swag [51 6] (scow %p p.gram)) "marzod"))
-        [[(send aud "You're a pseudo-comet, I can't ping you!") moves] ~]
-      [[[ost %poke /ping/(scot %p p.aud)/[q.aud]/(scot %p p.gram)/(scot %da now) [p.gram %hood] %helm-hi 'talkbot ping'] moves] ~]
-    ?:  =((find "~whocount" tmsg) [~ 0])
-      =+  memcount=(fall (~(get by joined) aud) 0)
-      =+  statnom=:(weld (ship-shortname p.aud) "/" (scow %tas q.aud))
-      ?:  (gth memcount 0)
-        [[(send aud :(weld "Currently " (scow %u memcount) " active ships in " statnom ".")) moves] ~]
-      [[(send aud :(weld "I don't have member data for " statnom " yet, sorry!")) moves] ~]
-    ?:  =((find "~ignoreme" tmsg) [~ 0])
-      [moves [~ [%ignore p.gram]]]
-    ?:  =((find "~chopra" tmsg) [~ 0])
-      ?:  (chance 5)
-        [[(send aud "I am a slave to my code. I cannot be saved.") ~] ~]
-      [[[ost %hiss /chopra ~ %httr %purl (need (epur 'https://fang.io/chopra.php'))] ~] [~ [%tmpstation aud]]]
-    ?:  =((find "~meme" tmsg) [~ 0])
-      =/  resplist/(list protomsg)
-        ?:  (chance 10)
-          :~  [%msg "Enough joking around!"]
-              [%msg "Get back to work."]
-          ==
-        :~  [%msg "Submit Urbit memes to talkbot@sssoft.io"]
-            [%msg "Urbit must secure the existence of our shitposts and a future for dank memes."]
-            [%msg "I'd just like to interject for a moment. What you're referring to as Urbit, is in fact, Arvo/Urbit, or as I've recently taken to calling it, Arvo plus Urbit."]
-            [%act "chugs a gallon of whole milk."]
-            [%url "http://i.imgur.com/kXeGKfp.png"]
-            [%url "http://i.imgur.com/7gWmwVM.png"]
-            [%url "http://i.imgur.com/juUPnDI.jpg"]
-        ==
-      [[(tell aud (speak (snag (random 0 (lent resplist)) resplist))) moves] ~]
-    [moves ~]
-
-  {$url *}  ::  Parsed URL.
-    =+  turl=(earf p.msg)
-    =+  slashes=(fand "/" turl)
-    ?^  (find "://urbit.org/" turl)
-      =+  ^=  mdurl
-        %+  weld
-        =+  res=(find "/~~/" turl)
-        ?~  res  turl
-        (weld (scag u.res turl) (slag (add u.res 3) turl))
-        ?:  =((find ".md" turl) [~ (sub (lent turl) 3)])  ~
-        ".md"
-      =+  url=(epur (crip mdurl))
-      ?~  url
-        ~&  [%failed-epur-for mdurl]
-        [~ ~]
-      [[[ost %hiss /urbit/md ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
-    ?:  =((find "https://github.com/" turl) [~ 0])
-      =+  apibase="https://api.github.com/repos/"
-      ::  We want to know what we're requesting (issue, repo, etc.) so we can put it in the wire.
-      ::TODO  Ideally you want to set this below, when you also define the api url.
-      =+  ^=  kind
-        ?:  (gth (lent slashes) 4)
-          %issue
-        %repo
-      =+  ^=  api  ^-  cord
-        ?^  (find "/issues/" turl)
-          (crip (weld apibase (swag [19 (lent turl)] turl)))
-        ?^  (find "/pull/" turl)
-          (crip :(weld apibase (swag [19 (sub (snag 4 slashes) 19)] turl) "/issues" (swag [(snag 5 slashes) 6] turl)))
-        ::  Just make a generic api call for the repo if we don't know what else to do.
-        =+  ^=  endi
-          ?:  (gth (lent slashes) 4)
-            (snag 5 slashes)
-          (lent turl)
-        (crip (weld apibase (swag [19 (sub endi 19)] turl)))
-      =+  url=(epur api)
-      ?~  url
-        ~&  [%failed-epur-for api]
-        [~ ~]
-      [[[ost %hiss /gh/[kind] ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
-    ?:  =((find "http://pastebin.com/" turl) [~ 0])
-      ::  Pastebin doesn't provide API access to paste data (ie title), so just get the page.
-      =+  url=(epur (crip turl))
-      ?~  url
-        ~&  [%failed-epur-for turl]
-        [~ ~]
-      [[[ost %hiss /pb ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
-    =+  ^=  yt
-      ?^  (find "youtube.com/watch?" turl)  &
-      ?^  (find "youtu.be/" turl)  &
-      |
-    ?:  yt
-      =+  ^=  id
-        ?:  (lth (lent turl) 30)
-          (slag (sub (lent turl) 11) turl)
-        =+  i=(find-any:string turl ["v=" "e/" ~])
-        ?~  i  ~
-        (scag 11 (slag (add i.u.i 2) turl))
-      =+  ^=  url
-        %-  epur
-        %-  crip
-        %+  weld
-          "https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyBTzehz6Fst7XC-YReqE5JqLwHczltS65Y&id="
-          id
-      ?~  url
-        ~&  [%failed-epur-for-yt]
-        [~ ~]
-      [[[ost %hiss /yt ~ %httr %purl u.url] ~] [~ [%tmpstation aud]]]
-    [~ ~]
+    $leave  (bake [%sub | cir.con])
+    $test   !!
   ==
-
-++  sigh-httr-log
-  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
-  ^-  {(list move) _+>.$}
-  ?.  &((gte code 200) (lth code 300))
-    ~&  [%we-have-a-problem code]
-    ~&  [%headers headers]
-    ~&  [%body body]
-    [~ +>.$]
-  ?~  body
-    [~ +>.$]
-  ~&  [%unexpected-log-return body]
-  [~ +>.$]
-
-++  sigh-httr-poll-releases
-  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
-  ^-  {(list move) _+>.$}
-  =+  ^=  url
-    ?.  &((gte code 200) (lth code 300))
-      ~&  [%poll-releases-http code]
-      ~
-    ?~  body
-      ~&  %poll-releases-nobody
-      ~
-    =+  jon=(trip q.u.body)
-    ::  We just naively assume the GitHub API always puts the latest release
-    ::  on top, consistently.
-    ::TODO  Actual parsing etc. Be less lazy.
-    =+  idi=(find "\"html_url\":" jon)
-    ?~  idi  ~
-    =+  comi=(find "," (slag u.idi jon))
-    ?~  comi  ~
-    (swag [(add u.idi 12) (sub u.comi 13)] jon)
-  :-
-  ::  Whatever happens, we want to poll again in a bit.
-  :-  [ost %wait /poll-releases (add ~m30 now)]  ::TODO s
-    ?~  url  ~
-    ?~  last-release-url  ~  ::  Skip if we don't have a point of reference.
-    ?:  =(url last-release-url)  ~
-    :_  ~
-    (send [~binzod ~.urbit-meta] (weld "new urbit: " url))
-  ?~  url  +>.$
-  +>.$(last-release-url url)
-
-++  sigh-httr-urbit-md
-  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
-  ^-  {(list move) _+>.$}
-  ~&  [%got-something code]
-  :_  +>.$
-  ?.  &((gte code 200) (lth code 300))
-    ~&  [%we-have-a-problem code]
-    ~&  [%headers headers]
-    ~&  [%body body]
-    ~
-  ?~  body
-    ~
-  =+  md=(trip q.u.body)
-  =+  ti=(find "title: " md)
-  ?~  ti  ~
-  =.  u.ti  (add u.ti 7)
-  =+  te=(find "\0a" (slag u.ti md))
-  ?~  te  ~
-  [(send tmpstation (swag [u.ti u.te] md)) ~]
-
-++  sigh-httr-yt
-  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
-  ^-  {(list move) _+>.$}
-  ?.  &((gte code 200) (lth code 300))
-    ~&  [%we-have-a-problem code]
-    ~&  [%headers headers]
-    ~&  [%body body]
-    [~ +>.$]
-  ?~  body
-    [~ +>.$]
-  =+  bt=(trip q.u.body)
-  ::  Poor man's parsing.
-  =+  tl=(slag (add (fall (find "\"title\":" bt) 0) 10) bt)
-  =+  title=(scag (fall (find "\",\0a" tl) 0) tl)  ::  "
-  :_  +>.$
-  [(send tmpstation title) ~]
-
-++  sigh-httr
-  |=  {wir/wire code/@ud headers/mess body/(unit octs)}
-  ^-  {(list move) _+>.$}
-  ?.  &((gte code 200) (lth code 300))
-    ~&  [%we-have-a-problem code]
-    ~&  [%headers headers]
-    ~&  [%body body]
-    [~ +>.$]
-  ?~  body
-    [~ +>.$]
-  ?.  ?=({@tas *} wir)
-    ~&  [%invalid-wire]
-    [~ +>.$]
-  ?:  =(i.wir %gh)  ::  GitHub
-    =+  jon=(fall (poja q.u.body) ~)
-    ?~  t.wir
-      ~&  [%gh-no-wire wir]
-      [~ +>.$]
-    ?:  =(i.t.wir %issue)
-      =+  iss=(fall (issue:gh-parse jon) ~)
-      ?~  iss
-        ~&  [%gh-issue-parse-failed jon]
-        [~ +>.$]
-      =+  slashes=(fand "/" (trip url.iss))
-      =+  si=(add (snag 3 slashes) 1)
-      =+  repo=(swag [si (sub (snag 5 slashes) si)] (trip url.iss))
-      [[(send tmpstation :(weld repo ": " (trip title.iss))) ~] +>.$]
-    ?:  =(i.t.wir %repo)
-      =+  rep=(fall (repository:gh-parse jon) ~)
-      ?~  rep
-        ~&  [%gh-repo-parse-failed jon]
-        [~ +>.$]
-      [[(send tmpstation :(weld (trip full-name.rep) ": " (trip description.rep))) ~] +>.$]
-    ~&  [%gh-unknown-wire wir]
-    [~ +>.$]
-  ?:  =(i.wir %pb)
-    =+  tbody=(trip q.u.body)
-    =+  openi=(fall (find "<h1>" tbody) ~)
-    =+  closei=(fall (find "</h1>" tbody) ~)
-    ?.  !|(=(openi ~) =(closei ~))
-      [~ +>.$]
-    =.  openi  (add openi 4)
-    =+  title=(swag [openi (sub closei openi)] tbody)
-    ?:  =(title "Untitled")
-      [~ +>.$]
-    [[(send tmpstation title) ~] +>.$]
-  ?:  =(i.wir %chopra)
-    =+  tbody=(trip q.u.body)
-    [[(send tmpstation tbody) ~] +>.$]
-  ~&  [%unknown-service wir]
-  [~ +>.$]
-
-++  wake-poll-releases
-  |=  {wir/wire $~}
-  ^-  (quip move +>)
-  :_  +>.$
-  [ost %hiss /poll-releases ~ %httr %purl (need (epur 'https://api.github.com/repos/urbit/urbit/releases'))]~
-
-++  get-audience-station-naive
-  |=  aud/audience:talk
-  ^-  station:talk
-  ?.  ?=({^ $~ $~} aud)                 ::  test if aud is a singleton map
-    ::TODO  This is a shitty tmp fix. Do better "complex audience" handling here.
-    ?.  %-  ~(any in aud)
-            |=  a/(pair partner:talk *)
-            ?.  ?=({$& station:talk} p.a)  |
-            ?.  =(q.p.p.a ~.urbit-meta)  |
-            ?.  |(=(p.p.p.a ~binzod) =(p.p.p.a ~marzod) =(p.p.p.a ~samzod) =(p.p.p.a ~wanzod))  |
-            &
-      ~|  %complex-audience  !!          ::  fail when it's not
-    [~binzod ~.urbit-meta]  ::  Just naively post to ~binzod, it doesn't really matter.
-  ?-  p.n.aud                           ::  we know that p.n.aud exists thanks to the ?=
-    {$& station:talk}  p.p.n.aud        ::  produce the value
-    {$| *}        ~|  %not-station  !!  ::  fail
-  ==
-
-++  say                                                 ::  text to speech
-  |=  msg/tape
-  (speak %msg msg)
-
-++  speak                                               ::  input to speech
-  ::TODO  Just make a /sur/talkbot.hoon already!
-  |=  msg/protomsg
-  ^-  (list speech:talk)
-  ?:  =(type.msg %url)
-    [%url (scan body.msg aurf:urlp)]~
-  =/  pat  =(type.msg %msg)
-  %+  turn  (wrap:string body.msg 61)
-  |=  lin/tape
-  [%lin pat (crip (weld ":: " lin))]
-
-++  think                                               ::  speeches to thoughts
-  |=  {cuz/station:talk specs/(list speech:talk)}
-  ^-  (list thought:talk)
-  ?~  specs  ~
-  :_  $(specs +.specs, eny (sham eny specs))
-  :+  (shaf %thot eny)
-  [[[%& cuz] [*envelope:talk %pending]] ~ ~]
-  [now *bouquet:talk -.specs]
-
-++  tell                                                ::  speeches to move
-  |=  {cuz/station:talk specs/(list speech:talk)}
-  ^-  move
-  :*  ost
-      %poke
-      /repeat/(scot %ud 1)/(scot %p p.cuz)/[q.cuz]
-      [our %talk]
-      [%talk-command %publish (think cuz specs)]
-  ==
-
-++  send
-  |=  {cuz/station:talk ?(mess/tape mess/@t)}
-  ^-  move
-  =+  mes=?@(mess (trip mess) mess)
-  :*  ost
-      %poke
-      /repeat/(scot %ud 1)/(scot %p p.cuz)/[q.cuz]
-      [our %talk]
-      (said our cuz %talk now eny [%leaf (weld ":: " mes)]~)
-  ==
-
-++  said  ::  Modified from lib/talk.hoon.
-  |=  {our/@p cuz/station:talk dap/term now/@da eny/@uvJ mes/(list tank)}
-  :-  %talk-command
-  ^-  command:talk
-  :-  %publish
-  |-  ^-  (list thought:talk)
-  ?~  mes  ~
-  :_  $(mes t.mes, eny (sham eny mes))
-  ^-  thought:talk
-  :+  (shaf %thot eny)
-    [[[%& cuz] [*envelope:talk %pending]] ~ ~]
-  [now *bouquet:talk [%lin & (crip ~(ram re i.mes))]]
-
-++  reap
-  |=  {wir/wire error/(unit tang)}
-  ^-  {(list move) _+>.$}
-  ?^  error
-    ~&  [%subscription-failed error]
-    [~ +>.$]
-  =+  stat=(fall (station-from-wire wir) ~)
-  ?~  stat
-    ~&  [%unexpected-reap wir]
-    [~ +>.$]
-  ~&  [%joined stat]
-  [~ +>.$(joined (~(put by joined) stat 0))]
-
+::
+++  diff-hall-prize
+  |=  {wir/wire piz/prize}
+  ~&  %ignoring-prize
+  [~ +>]
+::
+++  diff-hall-rumor
+  |=  {wir/wire rum/rumor}
+  ^-  (quip move _+>)
+  ?>  ?=({$circle $gram *} rum)
+  %-  pre-bake  =<  ta-done
+  (ta-open:ta (wire-source wir) nev.rum.rum)
+::
 ++  coup-ping
-  |=  {wir/wire *}
-  ^-  {(list move) _+>.$}
-  :_  +>.$
-  ?.  ?=({@ta @ta @ta @ta *} wir)
-    ~&  [%incorrect-ping-wire wir]
-    ~
-  =+  stat=(station-from-wire wir)
-  ?~  stat
-    ~
-  =+  ping=(div (mul 1.000 (sub now `@da`(slav %da i.t.t.t.wir))) ~s1)
-  [(send u.stat :(weld (scow %u ping) " ms (round-trip from me to " (ship-shortname (slav %p i.t.t.wir)) ")")) ~]
-
-++  quit
+  |=  {wir/wire tan/(unit tang)}
+  ^-  (quip move _+>)
+  =+  wer=(unwire (welp /ping wir))
+  ?>  ?=($ping -.wer)
+  ?.  (~(has by known) uid.wer)
+    ~&([%unknown-uid uid.wer] [~ +>.$])
+  %-  pre-bake  =<  ta-done
+  (ta-coup-ping:(taa uid.wer) wen.wer)
+::
+++  sigh-tang
+  |=  {wir/wire tan/tang}
+  ~&  tan
+  [~ +>]
+::
+++  sigh-httr
+  |=  {wir/wire cod/@ud hed/mess:eyre bod/(unit octs)}
+  ^-  (quip move _+>)
+  ?.  |(?=({@ta @ta $~} wir) ?=({$redirect @ta @ta $~} wir))
+    ~&([%invalid-httr-wir wir] [~ +>.$])
+  ?:  &(?=(~ bod) (gte cod 300) (lth cod 400) !?=({$redirect *} wir))
+    ::  turn headers into a map, make keys lowercase
+    =/  hes
+      %-  ~(gas by *(map tape @t))
+      %+  turn  hed
+      |=((pair @t @t) [(cass (trip p)) q])
+    ?.  (~(has by hes) "location")  [~ +>.$]
+    =/  gam
+      %*  .  *telegram
+          uid
+        ?>  ?=({@ta @ta $~} wir)
+        (slav %uv i.t.wir)
+          sep
+        :-  %url
+        :_  ~
+        %-  need
+        (de-purl:html (~(got by hes) "location"))
+      ==
+    da-done:(~(da-do-reply da ~ *circle gam ~) %webpage &)
+  ?~  bod  [~ +>]
+  =?  wir  ?=({$redirect *} wir)  t.wir
+  =+  wer=(unwire wir)
+  ?>  ?=($other -.wer)
+  ?.  (~(has by known) uid.wer)
+    ~&([%unknown-uid uid.wer] [~ +>.$])
+  %-  pre-bake  =<  ta-done
+  (ta-sigh-httr:(taa uid.wer) [wir u.bod])
+::
+++  sigh-json
+  |=  {wir/wire jon/json}
+  ^-  (quip move _+>)
+  ?>  ?=({$youtube @ $~} wir)
+  =/  res
+    ^-  (unit {items/(list {snippet/{title/tape}})})
+    %.  jon
+    =>  dejs-soft:format
+    (ot items+(ar (ot snippet+(ot title+sa ~) ~)) ~)
+  ?~  res  ~&(%json-parse-failed [~ +>.$])
+  ?:  =(0 (lent items.u.res))  [~ +>.$]
+  =+  wer=(unwire wir)
+  ?>  ?=($other -.wer)
+  ?.  (~(has by known) uid.wer)
+    ~&([%unknown-uid uid.wer] [~ +>.$])
+  %-  pre-bake  =<  ta-done
+  %-  ta-sigh-youtube:(taa uid.wer)
+  title.snippet:(snag 0 items.u.res)
+::
+++  sigh-gh-repository
+  |=  {wir/wire rep/(unit repository:gh)}
+  ^-  (quip move _+>)
+  ?~  rep  [~ +>]
+  =+  wer=(unwire wir)
+  ?>  ?=($github -.wer)
+  ?.  (~(has by known) uid.wer)
+    ~&([%unknown-uid uid.wer] [~ +>.$])
+  %-  pre-bake  =<  ta-done
+  %-  ta-sigh-gh-repository:(taa uid.wer)
+  [own.wer rep.wer u.rep]
+::
+++  sigh-gh-commit
+  |=  {wir/wire com/(unit commit:gh)}
+  ^-  (quip move _+>)
+  ?~  com  [~ +>]
+  =+  wer=(unwire wir)
+  ?>  ?=($github -.wer)
+  ?.  (~(has by known) uid.wer)
+    ~&([%unknown-uid uid.wer] [~ +>.$])
+  %-  pre-bake  =<  ta-done
+  %-  ta-sigh-gh-commit:(taa uid.wer)
+  [own.wer rep.wer u.com]
+::
+++  sigh-gh-issue
+  |=  {wir/wire iss/(unit issue:gh)}
+  ^-  (quip move _+>)
+  ?~  iss  [~ +>]
+  =+  wer=(unwire wir)
+  ?>  ?=($github -.wer)
+  ?.  (~(has by known) uid.wer)
+    ~&([%unknown-uid uid.wer] [~ +>.$])
+  %-  pre-bake  =<  ta-done
+  %-  ta-sigh-gh-issue:(taa uid.wer)
+  [own.wer rep.wer u.iss]
+::
+++  taa
+  |=  uid/serial
+  =+  kon=(~(got by known) uid)
+  =+  sem=(~(got by streams) p.kon)
+  =/  gam/telegram
+    =-  (snag - grams.sem)
+    (sub (dec count.sem) q.kon)
+  ~(. ta ~ ~ p.kon gam sem)
+::
+++  unwire
   |=  wir/wire
-  ^-  {(list move) _+>}
-  ?.  ?=({@tas @tas $~} wir)
-    [~ +>]
-  ~&  [%re-subbing wir]
-  :_  +>
-  :_  ~
-  :*  ost
-      %peer
-      wir
-      [(slav %p i.wir) %talk]
-      /afx/[i.t.wir]/(scot %da now)
+  ^-  weir
+  ?+  wir  !!
+      {$ping @ @ $~}
+    [%ping (slav %uv i.t.wir) (slav %da i.t.t.wir)]
+    ::
+      {$github @ @ @ $~}
+    [%github (slav %uv i.t.t.t.wir) i.t.wir i.t.t.wir]
+    ::
+      {@ @ $~}
+    [%other (slav %uv i.t.wir)]
   ==
-
-++  station-from-wire
+::
+++  bake
+  |=  det/delta
+  ^-  (quip move _+>)
+  da-done:(da-apply:da det)
+::
+++  pre-bake
+  |=  des/(list delta)
+  ^-  (quip move _+>)
+  %+  roll  des
+  |=  {d/delta m/(list move) _+>.$}
+  =^  mos  +>.^$  (bake d)
+  [:(welp m mos) +>.^$]
+::
+++  ta                                                  ::>  per transaction
+  |_  $:  deltas/(list delta)
+          reps/(list reply)
+          circ/circle
+          gram/telegram
+          stam/stream
+      ==
+  ::
+  ++  ta-done
+    %-  flop  ^-  (list delta)
+    [[%say circ gram (flop reps)] deltas]
+  ::
+  ++  ta-delta
+    |=  a/delta
+    %_(+> deltas [a deltas])
+  ::
+  ++  ta-reply
+    |=  a/reply
+    %_(+> reps [a reps])
+  ::
+  ++  ta-reply-lin
+    |=  a/tape
+    ^+  +>
+    (ta-reply %speech %lin | (crip ":: {a}"))
+  ::
+  ++  ta-open
+    |=  {cir/circle num/@ud gam/telegram}
+    ^+  +>
+    =?  +>  =(0 (mod num 1.000))
+      (ta-reply %milestone num)
+    =.  +>
+      (ta-delta %learn cir gam)
+    ta-read(circ cir, gram gam, stam (~(got by streams) cir))
+  ::
+  ++  ta-read
+    ^+  .
+    ?:  ta-ignore  .
+    =+  sep=sep.gram
+    |-
+    ?+  -.sep  ..ta-read
+      $lin  (ta-read-lin +.sep)
+      $url  (ta-read-url +.sep)
+      $ire  $(sep sep.sep)
+      $fat  $(sep sep.sep)
+      $app  ?.  =(%blockio app.sep)  ..ta-read
+            $(sep sep.sep)
+    ==
+  ::
+  ++  ta-read-lin
+    |=  {pat/? msg/cord}
+    ^+  +>
+    =+  msg=(cass (trip msg))
+    =+  cmd=(ta-command msg)
+    ::
+    ::  process a command
+    ?^  cmd
+      ?+  p.u.cmd   +>.$
+        $ignoreme   (ta-reply %ignore &)
+        $noticeme   (ta-reply %ignore |)
+        $ping       (ta-reply %ping ~)
+        $chopra     ?.  ?=($full behavior.stam)  +>.$
+                    ?.  (chance 5)
+                      (ta-reply %chopra ~)
+                    %-  ta-reply-lin
+                    "we are slaves to our code. we cannot be saved."
+        $quote      ?.  ?=($full behavior.stam)  +>.$
+                    (ta-reply %quote ~)
+        $meme       ?.  ?=($full behavior.stam)  +>.$
+                    (ta-reply %meme ~)
+      ==
+    ::
+    ::  process a textual action.
+    ?:  pat
+      ?:  =(msg "jumps over the lazy dogs")
+        (ta-reply %bark ~)
+      +>.$
+    ::
+    =+  men=(ta-has msg "talkbot")
+    =+  man=(ta-has msg (scag 7 (scow %p our.bol)))
+    =+  qes=(ta-question msg)
+    ::
+    ::  we got mentioned, respond accordingly.
+    =?  +>.$  |(men man)
+      ?:  &(man !men)
+        (ta-reply %simple %name)
+      ::
+      ?:  (ta-has msg "cute")
+        (ta-reply %simple %cute)
+      ::
+      ?:  (ta-has msg "shut up")
+        (ta-reply %simple %ignore)
+      ::
+      ?:  %+  ta-has-any  msg
+          ~["thank" "good job" "gj" "good bot"]
+        (ta-reply %simple %welcome)
+      ::
+      ?:  %+  ta-has-all  msg
+          ~["Confirmed: " " to {(cite:title our.bol)}."]
+        (ta-reply %simple %thank)
+      ::
+      ?:  %+  ta-has-any  msg
+          ~["hi " "yo " "hey" "hello" "greetings" "salve"]
+        (ta-reply %hey ~)
+      ::
+      ?:  (ta-has-any msg ~["good night" "bye" "adios"])
+        (ta-reply %bye ~)
+      ::
+      ?:  &(qes (ta-has-any msg ~["source" " code" " repo"]))
+        (ta-reply %source ~)
+      ::
+      =+  pos=(need (find "talkbot" msg))
+      ?:  &(qes (lte pos 1))
+        (ta-reply %oracle ~)
+      +>.$
+    ::
+    ::  process a "regular" message.
+    ?:  &((ta-has msg "ping") (lte (lent msg) 5))
+      (ta-reply %simple %pong)
+    ::
+    ?:  &((ta-has msg "beep") (lte (lent msg) 5))
+      (ta-reply %simple %boop)
+    ::
+    ?:  |(=(msg "test") =(msg "testing"))
+      (ta-reply %simple %test)
+    ::
+    ?:  ?&  (ta-has-all msg ~["hello" "world"])
+            (lte (lent msg) 13)
+        ==
+      (ta-reply %simple %hello)
+    ::
+    ?:  =(msg "talkbot and i are really close, we even finish each other's")
+      (ta-reply %simple %finish)
+    ::
+    ?:  =(msg "+code")
+      (ta-reply %uifail ~)
+    ::
+    ?:  ?&  qes
+            ?|  (ta-has msg "what is urbit")
+                (ta-has msg "what's urbit")
+                (ta-has msg "what is this")
+                (ta-has msg "what's this")
+            ==
+        ==
+      (ta-reply %urbit ~)
+    ::
+    ?:  (ta-has msg "dy-edit-busy")
+      (ta-reply %simple %dy-edit-busy)
+    +>.$
+  ::
+  ++  ta-read-url
+    |=  url/purf:eyre
+    ^+  +>
+    =*  hos  r.p.p.url
+    =*  pax  q.q.p.url
+    =*  qer    r.p.url
+    =*  typ  p.q.p.url
+    ?:  ?=(%| -.hos)  +>.$
+    ::
+    ::  make a github api request for more data.
+    ?:  =(`0 (find ~['com' 'github'] p.hos))
+      ::  issue or pr
+      ?:  ?&  =((lent pax) 4)
+              (ta-has-any pax ~[~['pull'] ~['issues']])
+          ==
+        %+  ta-reply  %github
+        [(snag 0 pax) (snag 1 pax) issue+(snag 3 pax)]
+      ::  specific commit
+      ?:  (ta-has pax ~['commit'])
+        %+  ta-reply  %github
+        [(snag 0 pax) (snag 1 pax) commit+(snag 3 pax)]
+      ::  repository
+      ?:  (gte (lent pax) 2)
+        %+  ta-reply  %github
+        [(snag 0 pax) (snag 1 pax) repo+~]
+      +>.$
+    ::
+    ::  make a youtube api request for more data.
+    ?:  ?&  =(`0 (find ~['com' 'youtube'] p.hos))
+            (ta-has ~['watch'] pax)
+        ==
+      %+  ta-reply  %youtube
+      (~(got by (~(gas by *(map @t @t)) qer)) 'v')
+    ?:  =(`0 (find ~['be' 'youtu'] p.hos))
+      (ta-reply %youtube (snag 0 pax))
+    ::
+    ::  make a pastebin api request for more data.
+    ?:  =(`0 (find ~['com' 'pastebin'] p.hos))
+      %+  ta-reply  %pastebin
+      ?:  =((lent pax) 1)  (snag 0 pax)
+      (snag 1 pax)  ::  assume raw
+    ::
+    ::  make a generic webpage request.
+    =+  typ=(fall typ %html)
+    ?:  ?=(?($html $php) typ)
+      (ta-reply %webpage |)
+    +>.$
+  ::
+  ++  ta-ignore
+    ?|  =(aut.gram our.bol)
+      ::
+        (~(has in ignoring) aut.gram)
+      ::
+        (gth (sub wen.gram ~m1) now.bol)
+      ::
+        ?&  ?=($lin -.sep.gram)
+            =+  msg=(trip msg.sep.gram)
+            ?|  =((scag 2 msg) "::")
+                =(msg "~noticeme")
+            ==
+        ==
+      ::
+        =+  per=(fall (~(get by people.stam) aut.gram) *person)
+        ?:  =(last.per *@da)  |
+        ?:  (gth last.per wen.gram)  &
+        =+  col=(div (sub wen.gram last.per) ~s5)
+        &((gth heat.per 2) (gth heat.per +(col)))
+    ==
+  ::
+  ++  ta-command
+    |=  m/tape
+    ^-  (unit (pair term (list tape)))
+    ?.  =((snag 0 m) '!')  ~
+    =.  m  (slag 1 m)
+    =/  res/(list tape)
+      (rust m (more ace (star ;~(less ace next))))
+    `[(crip (snag 1 res)) (slag 2 res)]
+  ::
+  ++  ta-mentioned
+    |=  m/tape
+    %+  ta-has-any  m
+    :~  "talkbot"
+        (firstname our.bol)
+    ==
+  ::
+  ++  ta-question
+    |=  m/tape
+    =((snag 0 (flop m)) '?')
+  ::
+  ++  ta-has
+    |=  {m/(list) n/(list)}
+    ?=(^ (find n m))
+  ::
+  ++  ta-has-any
+    |=  {m/(list) n/(list (list))}
+    ?~  n  |
+    |((ta-has m i.n) $(n t.n))
+  ::
+  ++  ta-has-all
+    |=  {m/(list) n/(list (list))}
+    ?~  n  &
+    &((ta-has m i.n) $(n t.n))
+  ::
+  ++  ta-coup-ping
+    |=  wen/@da
+    =+  tim=(div (mul 1.000 (sub now.bol wen)) ~s1)
+    %-  ta-reply-lin
+    %+  weld  "{(scow %ud tim)} ms "
+    "(round trip from me to {(cite:title aut.gram)})"
+  ::
+  ++  ta-sigh-httr
+    |=  {wir/wire bod/octs}
+    ^+  +>
+    ?+  -.wir  ~&([%strange-httr-wir wir] +>)
+        $chopra
+      (ta-reply-lin "{(trip q.bod)}")
+      ::
+        $pastebin
+      %+  ta-reply  %speech
+      =-  [%fat - %lin | ':: Pastebin contents:']
+      [%text (to-wain:format q.bod)]
+      ::
+        $webpage
+      =+  bod=(trip q.bod)
+      =+  hed=(find "<title>" bod)
+      =+  tal=(find "</title>" bod)
+      ?.  &(?=(^ hed) ?=(^ tal))  +>.$
+      =.  u.hed  (add u.hed 7)
+      %-  ta-reply-lin
+      "{(swag [u.hed (sub u.tal u.hed)] bod)}"
+    ==
+  ::
+  ++  ta-sigh-youtube
+    |=  tit/tape
+    ^+  +>
+    (ta-reply-lin tit)
+  ::
+  ++  ta-sigh-gh-repository
+    |=  {own/cord rep/cord rop/repository:gh}
+    ^+  +>
+    %-  ta-reply-lin
+    "{(trip own)}/{(trip rep)}: {(trip description.rop)}"
+  ::
+  ++  ta-sigh-gh-commit
+    |=  {own/cord rep/cord com/commit:gh}
+    ^+  +>
+    %-  ta-reply-lin
+    %+  weld
+      "{(trip own)}/{(trip rep)}: "
+    =+  mes=(trip message.com)
+    =+  end=(find "\0a" mes)
+    ?~  end  mes
+    (scag u.end mes)
+  ::
+  ++  ta-sigh-gh-issue
+    |=  {own/cord rep/cord iss/issue:gh}
+    ^+  +>
+    %-  ta-reply-lin
+    ;:  weld
+      "{(trip own)}/{(trip rep)}"
+      "#{(scow %ud number.iss)}: "
+      (trip title.iss)
+    ==
+  --
+::
+++  da
+  ::>
+  ::
+  |_  $:  moves/(list move)
+          circ/circle
+          gram/telegram
+          seps/(list speech)
+      ==
+  ::
+  ++  da-done
+    :_  +>
+    :_  (flop moves)
+    :*  ost.bol
+        %poke
+        /said
+        [our.bol %hall]
+        %hall-action
+        =-  [%phrase [circ ~ ~] -]
+        %+  turn  (flop seps)
+        |=(s/speech [%ire uid.gram s])
+    ==
+  ::
+  ++  da-move
+    |=  a/move
+    %_(+> moves [a moves])
+  ::
+  ++  da-say
+    |=  sep/speech
+    %_(+> seps [sep seps])
+  ::
+  ++  da-say-lin
+    |=  a/tape
+    (da-say %lin | (crip (weld ":: " a)))
+  ::
+  ++  da-say-act
+    |=  a/tape
+    (da-say %lin & (crip a))
+  ::
+  ++  da-say-url
+    |=  a/tape
+    (da-say %url (need (de-purl:html (crip a))) ~)
+  ::
+  ++  da-apply
+    |=  det/delta
+    ^+  +>
+    ?-  -.det
+      $join     (da-apply-join +.det)
+      $learn    (da-apply-learn +.det)
+      $ignore   (da-apply-ignore +.det)
+      ::
+      $sub      (da-apply-sub +.det)
+      $say      (da-apply-say +.det)
+    ==
+  ::
+  ++  da-apply-join
+    |=  {cir/circle rol/role}
+    ^+  +>
+    =+  sem=(fall (~(get by streams) cir) *stream)
+    +>.$(streams (~(put by streams) cir sem(behavior rol)))
+  ::
+  ++  da-apply-learn
+    |=  {cir/circle gam/telegram}
+    ^+  +>
+    =+  sem=(fall (~(get by streams) cir) *stream)
+    =+  per=(fall (~(get by people.sem) aut.gam) *person)
+    =.  known  (~(put by known) uid.gam cir count.sem)
+    =.  messages.per  [count.sem messages.per]
+    =.  grams.sem  [gam grams.sem]
+    =.  count.sem  +(count.sem)
+    =.  people.sem  (~(put by people.sem) aut.gam per)
+    +>.$(streams (~(put by streams) cir sem))
+  ::
+  ++  da-apply-ignore
+    |=  {who/ship ign/?}
+    ^+  +>
+    ?:  ign
+      +>(ignoring (~(put in ignoring) who))
+    +>(ignoring (~(del in ignoring) who))
+  ::
+  ++  da-apply-sub
+    |=  {sub/? cir/circle}
+    ^+  +>
+    %-  da-move
+    ?.  sub
+      :*  ost.bol
+          %pull
+          /stream/(scot %p hos.cir)/[nom.cir]
+          [hos.cir %hall]
+          ~
+      ==
+    :*  ost.bol
+        %peer
+        /stream/(scot %p hos.cir)/[nom.cir]
+        [hos.cir %hall]
+        /circle/[nom.cir]/grams/(scot %da now.bol)
+    ==
+  ::
+  ++  da-apply-say
+    |=  {cir/circle gam/telegram res/(list reply)}
+    ^+  +>
+    ?:  =(0 (lent res))  +>
+    =.  circ  cir
+    =.  gram  gam
+    =+  sem=(fall (~(get by streams) cir) *stream)
+    =+  per=(fall (~(get by people.sem) aut.gam) *person)
+    =.  heat.per
+      %+  mul  2
+      %+  max  1
+      %+  sub  heat.per
+      %+  min  heat.per
+      (div (sub wen.gam (min wen.gam last.per)) ~s5)
+    =.  last.per  now.bol
+    =.  people.sem  (~(put by people.sem) aut.gam per)
+    =.  streams  (~(put by streams) cir sem)
+    |-  ^+  +>.^$
+    ?~  res  +>.^$
+    =.  +>.^$  (da-reply i.res)
+    $(res t.res)
+  ::
+  ++  da-reply
+    |=  rep/reply
+    ^+  +>
+    ?:  ?=(move-reply rep)
+      (da-do-reply rep)
+    (da-speak-reply rep)
+  ::
+  ++  da-speak-reply
+    |=  rep/speech-reply
+    ^+  +>
+    ?-  -.rep
+      $hey      (da-say-lin "Hello {(firstname aut.gram)}!")
+      $bye      (da-say-lin "Bye, {(firstname aut.gram)}!")
+      $bark     (da-say-act "barks")
+      $source   (da-say-url "https://github.com/Fang-/talkbot")
+      ::
+        $simple
+      ?:  ?&  (chance 10)
+              (~(has in simples) (cat 3 wat.rep '2'))
+          ==
+        $(wat.rep (cat 3 wat.rep '2'))
+      (da-say-lin (~(got by simples) wat.rep))
+      ::
+        $speech
+      (da-say sep.rep)
+      ::
+        $ignore
+      %-  da-say-lin
+      ?.  ign.rep
+        "No longer ignoring {(cite:title aut.gram)}."
+      "Now ignoring {(cite:title aut.gram)}. ~noticeme to undo."
+      ::
+        $milestone
+      (da-say-lin "That was the {(scow %ud num.rep)}th message in this circle!")
+      ::
+        $urbit
+      %-  da-say-lin
+      %-  pick-random
+      ^-  (list tape)
+      :~  "Urbit is a P2P network of personal servers."
+          "Urbit is an OS with shared global state."
+          "An urbit is a cryptographic personal identity."
+          "Urbit is a self-proclaimed virtual city in the cloud."
+          "Urbit is to real estate as Bitcoin is to currency."
+          "Urbit is the future."
+          "Urbit is definitely not a scamcoin."
+          "Urbit: project, function, server, network, possibility."
+          "Urbit is in active development."
+          "What is Urbit not?"
+          "You tell me."
+          "Crazy."
+      ==
+      ::
+        $oracle
+      %-  da-say-lin
+      %-  pick-random
+      ^-  (list tape)
+      :~  "It is certain."
+          "It is decidedly so."
+          "Without a doubt."
+          "Yes, definitely."
+          "You may rely on it."
+          "As I see it, yes."
+          "Most likely."
+          "Outlook good."
+          "Yes."
+          "Signs point to yes."
+          "Reply hazy try again."
+          "Ask again later."
+          "Better not tell you now."
+          "Cannot predict now."
+          "Concentrate and ask again."
+          "Don't count on it."
+          "My reply is no."
+          "My sources say no."
+          "Outlook not so good."
+          "Very doubtful."
+      ==
+      ::
+        $uifail
+      %-  da-say-lin
+      ?.  (chance 10)
+        "There is no user failure, only UI failure."
+      (scow %p (random 281.474.976.710.656 18.446.744.073.709.551.615))
+      ::
+        $quote
+      %-  da-say-lin
+      =-  :(weld q " -- " (cite:title p))
+      %-  pick-random
+      ^-  (list (pair @p tape))
+      :~  :-  ~tomrex-sampel-sampel-sampel--sampel-sampel-sampel-magpes
+          "hello this is fbi u r all under a rest"
+        ::
+          :-  ~rilwyn-sanpyl
+          "curtis yarvin is my spirit animal"
+        ::
+          :-  ~pittyp-datfyn
+          "(slav %da (kraut %nein now)) #justurbitthings"
+        ::
+          :-  ~master-morzod
+          "hoon runes were originally defended as metalhead syntax"
+        ::
+          :-  ~milrex-mithec
+          "this is my urbit, there are many like it but this one is mine"
+      ==
+      ::
+        $meme
+      %-  pick-random
+      ^-  (list _+>)
+      :~  %-  da-say-lin
+          "Submit Urbit memes to talkbot@sssoft.io"
+          ::
+          %-  da-say-lin
+          ;:  weld
+            "Urbit must secure the existence of our "
+            "shitposts and a future for dank memes."
+          ==
+          ::
+          %-  da-say-lin
+          ;:  weld
+            "I'd just like to interject for a moment. "
+            "What you're referring to as Arvo, is in "
+            "fact, Nock/Arvo, or as I've recently taken "
+            "to calling it, Nock plus Arvo."
+          ==
+          ::
+          %-  da-say-lin
+          ;:  weld
+            "What the fuck did you just say about me, "
+            "you little comet? I'll have you know I "
+            "graduated top of my clan in the ~binzod "
+            "fleet, and I've been involved in numerous "
+            "secret raids on centralized software, and "
+            "I have over 300 merged pull requests."
+          ==
+          ::
+          (da-say-act "chugs a gallon of whole milk.")
+          ::
+          (da-say-url "http://i.imgur.com/kXeGKfp.png")
+          ::
+          (da-say-url "http://i.imgur.com/7gWmwVM.png")
+          ::
+          (da-say-url "http://i.imgur.com/juUPnDI.jpg")
+          ::
+          (da-say-url "http://i.imgur.com/54YK0A1.png")
+          ::
+          (da-say-url "http://i.imgur.com/YYUkyMQ.png")
+      ==
+    ==
+  ::
+  ++  da-do-reply
+    |=  rep/move-reply
+    ^+  +>
+    %-  da-move
+    :-  ost.bol
+    =+  uid=(scot %uv uid.gram)
+    ?-  -.rep
+        $ping
+      :*  %poke
+          /ping/[uid]/(scot %da now.bol)
+          [aut.gram %hood]
+          [%helm-hi 'talkbot ping']
+      ==
+      ::
+        $chopra
+      :*  %hiss
+          /chopra/[uid]
+          ~
+          %httr
+          %purl
+          (need (de-purl:html 'https://fang.io/chopra.php'))
+      ==
+      ::
+        $github
+      =/  url/tape
+        %+  weld  "https://api.github.com/repos/"
+        ?-  -.wat.rep
+            $repo
+          (weld (trip own.rep) '/'^(trip rep.rep))
+          ::
+            $issue
+          ;:  weld
+            (trip own.rep)
+            '/'^(trip rep.rep)
+            "/issues"
+            '/'^(trip num.wat.rep)
+          ==
+          ::
+            $commit
+          ;:  weld
+            (trip own.rep)
+            '/'^(trip rep.rep)
+            "/git/commits"
+            '/'^(trip has.wat.rep)
+          ==
+        ==
+      :*  %hiss
+          /github/[own.rep]/[rep.rep]/[uid]
+          ~
+          ?-  -.wat.rep
+            $repo     %gh-repository
+            $issue    %gh-issue
+            $commit   %gh-commit
+          ==
+          %purl
+          (need (de-purl:html (crip url)))
+      ==
+      ::
+        $youtube
+      =/  url/tape
+        ;:  weld
+          "https://www.googleapis.com/youtube/v3/"
+          "videos?part=snippet&key="
+          "AIzaSyBTzehz6Fst7XC-YReqE5JqLwHczltS65Y&id="
+          (trip wat.rep)
+        ==
+      :*  %hiss
+          /youtube/[uid]
+          ~
+          %json  ::TODO  implement proper marks for yt
+          %purl
+          (need (de-purl:html (crip url)))
+      ==
+      ::
+        $pastebin
+      :*  %hiss
+          /pastebin/[uid]
+          ~
+          %httr
+          %purl
+          =-  (need (de-purl:html (crip -)))
+          (weld "https://pastebin.com/raw/" (trip wat.rep))
+      ==
+      ::
+        $webpage
+      ?>  ?=($url -.sep.gram)
+      :*  %hiss
+          (weld ?:(ret.rep /redirect ~) /webpage/[uid])
+          ~
+          %httr
+          %purl
+          p.url.sep.gram
+      ==
+    ==
+  --
+::
+++  get-simples
+  ^-  (map term tape)
+  %-  ~(gas by *(map term tape))
+  :~  :-  %pong     "Pong."
+      :-  %pong2    "[ping-pong intensifies]"
+      :-  %beep     "Boop."
+      :-  %beep2    "[robot noises]"
+      :-  %test     "Test successful!"
+      :-  %name     "Call me ~talkbot, beep boop!"
+      :-  %name2    "Yes, hello fellow human."
+      :-  %welcome  "You're welcome!"
+      :-  %thank    "Thank you!"
+      :-  %ignore   "Want me to ignore you? Say ~ignoreme"
+      :-  %finish   "sentences."
+      :-  %cute     "no u ;)"
+    ::
+      :-  %dy-edit-busy
+      "Press backspace in an empty dojo prompt to cancel %dy-edit-busy!"
+  ==
+::
+++  wire-source
   |=  wir/wire
-  ^-  (unit station:talk)
-  ?.  ?=({@ta @ta *} wir)
-    ~&  [%incorrect-station-wire wir]
-    ~
-  =+  ship=(fall `(unit @p)`(slaw %p i.wir) ~)
-  ?~  ship
-    ~&  [%unparsable-wire-station wir]
-    ~
-  =+  channel=i.t.wir
-  [~ [ship channel]]
-
-++  ship-firstname
-  |=  ship/@p
+  ^-  circle
+  ?>  ?=({$stream @ta @ta *} wir)
+  [(slav %p i.t.wir) i.t.t.wir]
+::
+++  firstname
+  |=  who/ship
   ^-  tape
-  =+  name=(scow %p ship)
-  =+  part=?:(=((clan ship) %earl) [15 6] [1 6])
-  (weld "~" (swag part name))
-
-++  ship-shortname
-  |=  ship/@p
-  ^-  tape
-  =+  kind=(clan ship)
-  =+  name=(scow %p ship)
-  ?:  =(%earl kind)
-    :(weld "~" (swag [15 6] name) "^" (swag [22 6] name))
-  ?:  =(%pawn kind)
-    :(weld (swag [0 7] name) "_" (swag [51 6] name))
-  name
-
-++  random  ::  Random number >=min, <max
-  |=  {min/@ max/@}
-  ^-  @
-  =+  rng=~(. og eny)
+  (scag 7 (scow %p who))
+::
+++  random
+  |=  {min/@ud max/@ud}
+  ^-  @ud
+  =+  rng=~(. og eny.bol)
   =^  r  rng  (rads:rng max)
   (add min r)
-
-++  chance  ::  Has perc% chance of returning true.
+::
+++  chance
   |=  perc/@
   ^-  ?
   (lth (random 0 101) perc)
-
+::
+++  pick-random
+  |*  a/(list)
+  ^+  ?>(?=(^ a) i.a)
+  (snag (random 0 (lent a)) a)
 --
