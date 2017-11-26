@@ -369,8 +369,10 @@
     ::  process a command
     ?^  cmd
       ?+  p.u.cmd   +>.$
-        $ignoreme   (ta-reply %ignore &)
-        $noticeme   (ta-reply %ignore |)
+        $ignoreme   %-  ta-delta:(ta-reply %ignore &)
+                    [%ignore aut.gram &]
+        $noticeme   %-  ta-delta:(ta-reply %ignore |)
+                    [%ignore aut.gram |]
         $ping       (ta-reply %ping ~)
         $chopra     ?.  ?=($full behavior.stam)  +>.$
                     ?.  (chance 5)
@@ -512,15 +514,14 @@
   ++  ta-ignore
     ?|  =(aut.gram our.bol)
       ::
-        (~(has in ignoring) aut.gram)
+        ?.  (~(has in ignoring) aut.gram)  |
+        ?.  ?=($lin -.sep.gram)  |
+        !=((trip msg.sep.gram) "!noticeme")
       ::
         (gth (sub wen.gram ~m1) now.bol)
       ::
         ?&  ?=($lin -.sep.gram)
-            =+  msg=(trip msg.sep.gram)
-            ?|  =((scag 2 msg) "::")
-                =(msg "~noticeme")
-            ==
+            =((scag 2 (trip msg.sep.gram)) "::")
         ==
       ::
         =+  per=(fall (~(get by people.stam) aut.gram) *person)
@@ -775,7 +776,7 @@
       %-  da-say-lin
       ?.  ign.rep
         "No longer ignoring {(cite:title aut.gram)}."
-      "Now ignoring {(cite:title aut.gram)}. ~noticeme to undo."
+      "Now ignoring {(cite:title aut.gram)}. !noticeme to undo."
       ::
         $milestone
       (da-say-lin "That was the {(scow %ud num.rep)}th message in this circle!")
