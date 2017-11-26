@@ -38,8 +38,8 @@
       $:  streams/(map circle stream)                   ::<  what we follow
           known/(map serial (pair circle @ud))          ::<  all known messages
           ignoring/(set ship)                           ::<  shy people
-          latest/(map term *)                           ::<  for polling
           simples/(map term tape)                       ::<  static replies
+          scores/(map tape @sd)                         ::<  +1/-1 score totals
       ==                                                ::
     ++  stream                                          ::<  stream state
       $:  grams/(list telegram)                         ::<  words
@@ -92,6 +92,7 @@
           {$join cir/circle rol/role}
           {$learn cir/circle gam/telegram}
           {$ignore who/ship ign/?}
+          {$score inc/? wat/tape}
           ::  side-effects
           {$sub sub/? cir/circle}
           {$say cir/circle gam/telegram res/(list reply)}
@@ -102,6 +103,7 @@
           {$speech sep/speech}
           {$ignore ign/?}
           {$milestone num/@ud}
+          {$score old/@sd wat/tape}
           {$hey $~}
           {$bye $~}
           {$bark $~}
@@ -444,6 +446,16 @@
         ==
       (ta-reply %simple %hello)
     ::
+    ?:  |(=((scag 3 msg) "+1 ") =((scag 3 msg) "-1 "))
+      =+  inc==('+' (snag 0 msg))
+      =/  wat/tape
+        ?:  =((swag [3 4] msg) "for ")  (slag 7 msg)
+        (slag 3 msg)
+      =-  (ta-delta:- %score inc wat)
+      %+  ta-reply  %score
+      :_  wat
+      (fall (~(get by scores) wat) --0)
+    ::
     ?:  =(msg "talkbot and i are really close, we even finish each other's")
       (ta-reply %simple %finish)
     ::
@@ -676,6 +688,7 @@
       $join     (da-apply-join +.det)
       $learn    (da-apply-learn +.det)
       $ignore   (da-apply-ignore +.det)
+      $score    (da-apply-score +.det)
       ::
       $sub      (da-apply-sub +.det)
       $say      (da-apply-say +.det)
@@ -705,6 +718,13 @@
     ?:  ign
       +>(ignoring (~(put in ignoring) who))
     +>(ignoring (~(del in ignoring) who))
+  ::
+  ++  da-apply-score
+    |=  {inc/? wat/tape}
+    ^+  +>
+    =+  old=(fall (~(get by scores) wat) --0)
+    =+  new=(sum:si old ?:(inc --1 -1))
+    +>.$(scores (~(put by scores) wat new))
   ::
   ++  da-apply-sub
     |=  {sub/? cir/circle}
@@ -780,6 +800,14 @@
       ::
         $milestone
       (da-say-lin "That was the {(scow %ud num.rep)}th message in this circle!")
+      ::
+        $score
+      =+  new=(~(got by scores) wat.rep)
+      =-  (da-say-lin "{wat.rep} {(- old.rep)} -> {(- new)}")
+      |=  a/@sd
+      =+  b=(scow %sd a)
+      ?.  =((scag 2 b) "--")  b
+      ['+' (slag 2 b)]
       ::
         $urbit
       %-  da-say-lin
