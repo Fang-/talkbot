@@ -884,15 +884,19 @@
           ::
           (da-say-act "chugs a gallon of whole milk.")
           ::
-          (da-say-url "http://i.imgur.com/kXeGKfp.png")
+          (da-say-url "https://i.imgur.com/kXeGKfp.png")
           ::
-          (da-say-url "http://i.imgur.com/7gWmwVM.png")
+          (da-say-url "https://i.imgur.com/7gWmwVM.png")
           ::
-          (da-say-url "http://i.imgur.com/juUPnDI.jpg")
+          (da-say-url "https://i.imgur.com/juUPnDI.jpg")
           ::
-          (da-say-url "http://i.imgur.com/54YK0A1.png")
+          (da-say-url "https://i.imgur.com/54YK0A1.png")
           ::
-          (da-say-url "http://i.imgur.com/YYUkyMQ.png")
+          (da-say-url "https://i.imgur.com/YYUkyMQ.png")
+          ::
+          (da-say-url "https://i.imgur.com/aQ5KhdI.png")
+          ::
+          (da-say-url "https://i.imgur.com/uPX6B7s.png")
       ==
     ==
   ::
