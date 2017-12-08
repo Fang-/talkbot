@@ -436,7 +436,7 @@
       (ta-reply %simple %pong)
     ::
     ?:  &((ta-has msg "beep") (lte (lent msg) 5))
-      (ta-reply %simple %boop)
+      (ta-reply %simple %beep)
     ::
     ?:  |(=(msg "test") =(msg "testing"))
       (ta-reply %simple %test)
