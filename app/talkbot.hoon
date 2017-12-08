@@ -111,7 +111,7 @@
           {$source $~}
           {$oracle $~}
           {$uifail $~}
-          [$quote $~]
+          {$quote $~}
           {$meme $~}
       ==
     ++  move-reply
