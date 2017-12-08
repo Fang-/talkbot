@@ -450,6 +450,7 @@
       =+  inc==('+' (snag 0 msg))
       =/  wat/tape
         ?:  =((swag [3 4] msg) "for ")  (slag 7 msg)
+        ?:  =((swag [3 3] msg) "to ")   (slag 6 msg)
         (slag 3 msg)
       =-  (ta-delta:- %score inc wat)
       %+  ta-reply  %score
