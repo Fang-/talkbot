@@ -666,6 +666,10 @@
     |=  a/move
     %_(+> moves [a moves])
   ::
+  ++  da-moves
+    |=  a/(list move)
+    %_(+> moves (welp (flop a) moves))
+  ::
   ++  da-say
     |=  sep/speech
     %_(+> seps [sep seps])
@@ -730,19 +734,43 @@
   ++  da-apply-sub
     |=  {sub/? cir/circle}
     ^+  +>
-    %-  da-move
     ?.  sub
-      :*  ost.bol
-          %pull
-          /stream/(scot %p hos.cir)/[nom.cir]
-          [hos.cir %hall]
-          ~
+      %-  da-moves
+      :~  :*  ost.bol
+              %pull
+              /stream/(scot %p hos.cir)/[nom.cir]
+              [hos.cir %hall]
+              ~
+          ==
+          :*  ost.bol
+              %poke
+              /leave
+              [our.bol %hall]
+              %hall-action
+              [%notify [cir ~ ~] ~]
+          ==
       ==
-    :*  ost.bol
-        %peer
-        /stream/(scot %p hos.cir)/[nom.cir]
-        [hos.cir %hall]
-        /circle/[nom.cir]/grams/(scot %da now.bol)
+    %-  da-moves
+    :~  :*  ost.bol
+            %peer
+            /stream/(scot %p hos.cir)/[nom.cir]
+            [hos.cir %hall]
+            /circle/[nom.cir]/grams/(scot %da now.bol)
+        ==
+        :*  ost.bol
+            %poke
+            /name
+            [our.bol %hall]
+            %hall-action
+            [%naming [cir ~ ~] `'talkbot' ~]
+        ==
+        :*  ost.bol
+            %poke
+            /attend
+            [our.bol %hall]
+            %hall-action
+            [%notify [cir ~ ~] `%hear]
+        ==
     ==
   ::
   ++  da-apply-say
