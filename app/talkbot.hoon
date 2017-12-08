@@ -878,6 +878,9 @@
         ::
           :-  ~milrex-mithec
           "this is my urbit, there are many like it but this one is mine"
+        ::
+          :-  ~ravmel-ropdyl
+          "runes are inhumane!"
       ==
       ::
         $meme
@@ -925,6 +928,12 @@
           (da-say-url "https://i.imgur.com/aQ5KhdI.png")
           ::
           (da-say-url "https://i.imgur.com/uPX6B7s.png")
+          ::
+          (da-say-url "https://i.imgur.com/XxDxewP.jpg")
+          ::
+          (da-say-url "https://i.imgur.com/zoGKco2.jpg")
+          ::
+          (da-say-url "https://i.imgur.com/0BaA1xg.jpg")
       ==
     ==
   ::
