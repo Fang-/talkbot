@@ -594,7 +594,10 @@
         $pastebin
       %+  ta-reply  %speech
       =-  [%fat - %lin | ':: Pastebin contents:']
-      [%text (to-wain:format q.bod)]
+      :-  %text
+      %-  to-wain:format
+      ::TODO  make lib/hood/drum not skip on %bad-text
+      (crip (skim (trip q.bod) (sane %t)))
       ::
         $webpage
       =+  bod=(trip q.bod)
