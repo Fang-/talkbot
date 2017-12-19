@@ -376,8 +376,7 @@
         $noticeme   %-  ta-delta:(ta-reply %ignore |)
                     [%ignore aut.gram |]
         $ping       (ta-reply %ping ~)
-        $chopra     ?.  ?=($full behavior.stam)  +>.$
-                    ?.  (chance 5)
+        $chopra     ?.  (chance 5)
                       (ta-reply %chopra ~)
                     %-  ta-reply-lin
                     "we are slaves to our code. we cannot be saved."
