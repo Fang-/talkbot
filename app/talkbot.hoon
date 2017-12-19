@@ -606,7 +606,9 @@
       ?.  &(?=(^ hed) ?=(^ tal))  +>.$
       =.  u.hed  (add u.hed 7)
       %-  ta-reply-lin
-      "{(swag [u.hed (sub u.tal u.hed)] bod)}"
+      %+  scan
+        (swag [u.hed (sub u.tal u.hed)] bod)
+      (star ;~(pose enty:de-xml:html next))
     ==
   ::
   ++  ta-sigh-youtube
