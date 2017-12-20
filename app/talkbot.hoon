@@ -449,7 +449,7 @@
     ?:  ?&  (ta-has-all msg ~["hello" "world"])
             (lte (lent msg) 13)
         ==
-      (ta-reply %simple %hello)
+      (ta-reply %hey ~)
     ::
     ?:  |(=((scag 3 msg) "+1 ") =((scag 3 msg) "-1 "))
       =+  inc==('+' (snag 0 msg))
@@ -786,7 +786,7 @@
             /name
             [our.bol %hall]
             %hall-action
-            [%naming [cir ~ ~] `'talkbot' ~]
+            [%naming [cir ~ ~] `'~talkbot' ~]
         ==
         :*  ost.bol
             %poke
@@ -840,6 +840,7 @@
               (~(has in simples) (cat 3 wat.rep '2'))
           ==
         $(wat.rep (cat 3 wat.rep '2'))
+      ~!  wat.rep
       (da-say-lin (~(got by simples) wat.rep))
       ::
         $speech
