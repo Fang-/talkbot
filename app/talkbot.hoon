@@ -111,8 +111,8 @@
           {$source $~}
           {$oracle $~}
           {$uifail $~}
-          {$quote $~}
-          {$meme $~}
+          {$quote num/(unit @ud)}
+          {$meme num/(unit @ud)}
       ==
     ++  move-reply
       $%  {$ping $~}
@@ -381,9 +381,14 @@
                     %-  ta-reply-lin
                     "we are slaves to our code. we cannot be saved."
         $quote      ?.  ?=($full behavior.stam)  +>.$
-                    (ta-reply %quote ~)
+                    %+  ta-reply  %quote
+                    ?.  (gth (lent q.u.cmd) 0)  ~
+                    (slaw %ud (crip (snag 0 q.u.cmd)))
+                    ::NOTE  tfw can't de-dupe this with ?($quote $meme).
         $meme       ?.  ?=($full behavior.stam)  +>.$
-                    (ta-reply %meme ~)
+                    %+  ta-reply  %meme
+                    ?.  (gth (lent q.u.cmd) 0)  ~
+                    (slaw %ud (crip (snag 0 q.u.cmd)))
       ==
     ::
     ::  process a textual action.
@@ -895,7 +900,7 @@
         $quote
       %-  da-say-lin
       =-  :(weld q " -- " (cite:title p))
-      %-  pick-random
+      %-  (pick-selected num.rep)
       ^-  (list (pair @p tape))
       :~  :-  ~tomrex-sampel-sampel-sampel--sampel-sampel-sampel-magpes
           "hello this is fbi u r all under a rest"
@@ -917,7 +922,7 @@
       ==
       ::
         $meme
-      %-  pick-random
+      %-  (pick-selected num.rep)
       ^-  (list _+>)
       :~  %-  da-say-lin
           "Submit Urbit memes to talkbot@sssoft.io"
@@ -1113,4 +1118,12 @@
   |*  a/(list)
   ^+  ?>(?=(^ a) i.a)
   (snag (random 0 (lent a)) a)
+::
+++  pick-selected
+  |=  num/(unit @ud)
+  ?~  num  pick-random
+  |*  a/(list)
+  ?:  (lth u.num (lent a))
+    (snag u.num a)
+  (pick-random a)
 --
