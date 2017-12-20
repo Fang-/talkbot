@@ -40,6 +40,7 @@
           ignoring/(set ship)                           ::<  shy people
           simples/(map term tape)                       ::<  static replies
           scores/(map tape @sd)                         ::<  +1/-1 score totals
+          votes/(map ship (map tape ?))                 ::<  individual votes
       ==                                                ::
     ++  stream                                          ::<  stream state
       $:  grams/(list telegram)                         ::<  words
@@ -92,7 +93,7 @@
           {$join cir/circle rol/role}
           {$learn cir/circle gam/telegram}
           {$ignore who/ship ign/?}
-          {$score inc/? wat/tape}
+          {$score who/ship inc/? wat/tape}
           ::  side-effects
           {$sub sub/? cir/circle}
           {$say cir/circle gam/telegram res/(list reply)}
@@ -456,7 +457,12 @@
         ?:  =((swag [3 4] msg) "for ")  (slag 7 msg)
         ?:  =((swag [3 3] msg) "to ")   (slag 6 msg)
         (slag 3 msg)
-      =-  (ta-delta:- %score inc wat)
+      =/  ole
+        =-  (~(get by -) wat)
+        (fall (~(get by votes) aut.gram) *(map tape ?))
+      ?:  &(?=(^ ole) =(u.ole inc))
+        (ta-reply %simple %vote)
+      =-  (ta-delta:- %score aut.gram inc wat)
       %+  ta-reply  %score
       :_  wat
       (fall (~(get by scores) wat) --0)
@@ -734,11 +740,20 @@
     +>(ignoring (~(del in ignoring) who))
   ::
   ++  da-apply-score
-    |=  {inc/? wat/tape}
+    |=  {who/ship inc/? wat/tape}
     ^+  +>
     =+  old=(fall (~(get by scores) wat) --0)
-    =+  new=(sum:si old ?:(inc --1 -1))
-    +>.$(scores (~(put by scores) wat new))
+    =/  rec
+      (fall (~(get by votes) who) *(map tape ?))
+    =/  add
+      ?.  (~(has by rec) wat)
+        ?:(inc --1 -1)
+      ?:(inc --2 -2)
+    =+  new=(sum:si old add)
+    %_  +>.$
+      scores  (~(put by scores) wat new)
+      votes   (~(put by votes) who (~(put by rec) wat inc))
+    ==
   ::
   ++  da-apply-sub
     |=  {sub/? cir/circle}
@@ -1086,6 +1101,7 @@
       :-  %ignore   "Want me to ignore you? Say ~ignoreme"
       :-  %finish   "sentences."
       :-  %cute     "no u ;)"
+      :-  %vote     "No double-voting!"
     ::
       :-  %dy-edit-busy
       "Press backspace in an empty dojo prompt to cancel %dy-edit-busy!"
